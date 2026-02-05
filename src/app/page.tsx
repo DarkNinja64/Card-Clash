@@ -1,65 +1,66 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+import styles from "./home.module.css";
 
 export default function Home() {
   return (
     <div className={styles.page}>
+      <header className={styles.nav}>
+        <div className={styles.brand}>
+          <span className={styles.brandMark} />
+          <div>
+            <p className={styles.brandTitle}>Card Clash</p>
+            <p className={styles.brandTag}>Classroom battle arena</p>
+          </div>
+        </div>
+        <a className={styles.primaryBtn} href="/login">
+          Login
+        </a>
+      </header>
+
       <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        <section className={styles.hero}>
+          <div>
+            <h1>Competitive learning, built for the classroom.</h1>
+            <p>
+              Card Clash is a party-style educational game where students answer
+              questions, play power cards, and build focus streaks together. Teachers
+              get real-time insights and AI summaries to guide instruction.
+            </p>
+          </div>
+          <div className={styles.summaryCard}>
+            <h2>What it delivers</h2>
+            <ul>
+              <li>Real-time multiplayer game flow</li>
+              <li>Focus tracking and attention trends</li>
+              <li>AI-generated performance summaries</li>
+              <li>Gamified rewards for participation</li>
+            </ul>
+          </div>
+        </section>
+
+        <section className={styles.modeCard}>
+          <div>
+            <h2>Choose your play mode</h2>
+            <p>
+              Login is required before joining a lobby or starting solo study.
+            </p>
+          </div>
+          <div className={styles.modeGrid}>
+            <div className={styles.modeOption}>
+              <strong>Study solo</strong>
+              <span>Practice with self-paced questions.</span>
+              <a className={styles.secondaryBtn} href="/login">
+                Login to start
+              </a>
+            </div>
+            <div className={styles.modeOption}>
+              <strong>Party match</strong>
+              <span>Join a live class game with a lobby code.</span>
+              <a className={styles.secondaryBtn} href="/login">
+                Login to join
+              </a>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
