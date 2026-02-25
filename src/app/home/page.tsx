@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import styles from "./home.module.css";
 
 export default function PostLoginHome() {
@@ -12,12 +13,12 @@ export default function PostLoginHome() {
           </div>
         </div>
         <div className={styles.navActions}>
-          <a className={styles.secondaryBtn} href="/questions">
+          <Link className={styles.secondaryBtn} href="/questions">
             Create questions
-          </a>
-          <a className={styles.primaryBtn} href="/">
+          </Link>
+          <Link className={styles.primaryBtn} href="/">
             Log out
-          </a>
+          </Link>
         </div>
       </header>
 

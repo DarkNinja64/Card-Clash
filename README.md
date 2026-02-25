@@ -2,8 +2,15 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Set up the project for local development
+## Setup
+1. Clone, install dependencies
+2. Copy .env.example to .env.local
+3. Configure Supabase (see docs/database/SUPABASE_SETUP.md)
+4. Run migrations / create tables (see docs/database/DATABASE.md)
 
+Run the development server:
+## Run
 ```bash
 npm run dev
 # or
