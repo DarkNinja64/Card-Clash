@@ -12,9 +12,6 @@ export default function PostLoginHome() {
           </div>
         </div>
         <div className={styles.navActions}>
-          <a className={styles.secondaryBtn} href="/questions">
-            Create questions
-          </a>
           <a className={styles.primaryBtn} href="/">
             Log out
           </a>
