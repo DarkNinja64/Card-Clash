@@ -43,10 +43,10 @@ export default function LoginPage() {
               className={styles.input}
             />
             <div className={styles.actions}>
-              <a className={styles.primaryBtn} href="/home">
+              <a className={styles.primaryBtn} href="/student_home">
                 Login
               </a>
-              <a className={styles.ghostBtn} href="/home">
+              <a className={styles.ghostBtn} href="/student_home">
                 Create Student Account
               </a>
             </div>

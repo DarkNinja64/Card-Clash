@@ -1,4 +1,4 @@
-import styles from "./home.module.css";
+import styles from "./student_home.module.css";
 
 export default function PostLoginHome() {
   return (
@@ -21,22 +21,21 @@ export default function PostLoginHome() {
       <main className={styles.main}>
         <section className={styles.hero}>
           <div>
-            <h1>Your next session is ready.</h1>
+            <h1>A new game awaits!</h1>
             <p>
-              Choose how you want to play, or review your recent activity and focus
-              insights.
+              Join a game or study a question set to prep for the next one
             </p>
             <div className={styles.heroActions}>
-              <a className={styles.primaryBtn} href="/lobby">
-                Host a match
+              <a className={styles.primaryBtn} href="/game">
+                Join a match
               </a>
-              <a className={styles.secondaryBtn} href="/game">
-                Start solo study
+              <a className={styles.secondaryBtn} href="/sets">
+                Study a set
               </a>
             </div>
           </div>
           <div className={styles.card}>
-            <h2>Recent activity</h2>
+            <h2>Recent Games</h2>
             <ul>
               <li>Physics - Momentum Surge (Focus 82)</li>
               <li>Algebra - Factor Frenzy (Focus 77)</li>
@@ -47,28 +46,30 @@ export default function PostLoginHome() {
 
         <section className={styles.grid}>
           <div className={styles.panel}>
-            <h3>Quick actions</h3>
+            <h3>Quick Actions</h3>
             <button className={styles.ghostBtn} type="button">
-              Create a new deck
+              Review game scores
             </button>
             <button className={styles.ghostBtn} type="button">
-              Review class insights
+              Generate study suggestions
             </button>
             <button className={styles.ghostBtn} type="button">
-              Invite students
+              View saved sets
             </button>
           </div>
           <div className={styles.panel}>
-            <h3>Focus streaks</h3>
+            <h3>Upcoming Sessions</h3>
+            <li>Wednesday - 2:30 PM<br></br>
+            Algebra II - Unit 3</li>
+            <li>Friday - 1 PM<br></br>
+            Psychology: Locations in the Brain</li>
+          </div>
+          <div className={styles.panel}>
+            <h3>Focus Streaks</h3>
             <p>
-              Your class focus average is <strong>84</strong>. Next suggested break
+              Your focus average per game is <strong>46 minutes</strong>. Next suggested break
               window is in 12 minutes.
             </p>
-          </div>
-          <div className={styles.panel}>
-            <h3>Upcoming session</h3>
-            <p>Wednesday - 2:30 PM</p>
-            <p>Deck: Algebra II - Unit 3</p>
           </div>
         </section>
       </main>
