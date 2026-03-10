@@ -1,4 +1,8 @@
 import styles from "./questions.module.css";
+// At top of page.tsx
+import { createQuestionCard } from './actions';
+
+
 
 export default function QuestionsPage() {
   return (
@@ -12,13 +16,12 @@ export default function QuestionsPage() {
           </p>
         </div>
         <div className={styles.headerActions}>
-          <button className={styles.primaryBtn} type="button">
-            Save draft
-          </button>
+
         </div>
       </header>
 
       <main className={styles.main}>
+          <form action={createQuestionCard}>
         <section className={styles.formCard}>
           <h2>Question details</h2>
           <label className={styles.label} htmlFor="deck-name">
@@ -26,6 +29,7 @@ export default function QuestionsPage() {
           </label>
           <input
             id="deck-name"
+            name="category"
             className={styles.input}
             placeholder="e.g. Algebra II - Unit 3"
             type="text"
@@ -35,6 +39,7 @@ export default function QuestionsPage() {
           </label>
           <textarea
             id="question-text"
+            name="question"
             className={styles.textarea}
             placeholder="Type the challenge question students will answer."
           />
@@ -44,7 +49,7 @@ export default function QuestionsPage() {
               <label className={styles.label} htmlFor="difficulty">
                 Difficulty
               </label>
-              <select id="difficulty" className={styles.input}>
+              <select id="difficulty" name="difficulty" className={styles.input}>
                 <option>Intro</option>
                 <option>Core</option>
                 <option>Challenge</option>
@@ -56,6 +61,7 @@ export default function QuestionsPage() {
               </label>
               <input
                 id="timer"
+                name="timer_seconds"
                 className={styles.input}
                 placeholder="60"
                 type="number"
@@ -64,33 +70,50 @@ export default function QuestionsPage() {
           </div>
         </section>
 
-        <section className={styles.formCard}>
-          <h2>Answer options</h2>
-          <div className={styles.optionList}>
-            {[
-              "Option A",
-              "Option B",
-              "Option C",
-              "Option D"
-            ].map((label, index) => (
-              <div key={label} className={styles.optionRow}>
-                <span className={styles.optionBadge}>{index + 1}</span>
-                <input
-                  className={styles.input}
-                  placeholder={label}
-                  type="text"
-                />
-                <label className={styles.checkLabel}>
-                  <input type="checkbox" /> Correct
-                </label>
+
+              <section className={styles.formCard}>
+                  <h2>Answer options</h2>
+                  <div className={styles.optionList}>
+                      {[
+                          "Option A",
+                          "Option B",
+                          "Option C",
+                          "Option D"
+                      ].map((label, index) => (
+                          <div key={label} className={styles.optionRow}>
+                              <span className={styles.optionBadge}>{index + 1}</span>
+                              <input
+                                  name={`answer_option_${index+1}`}
+                                  className={styles.input}
+                                  placeholder={label}
+                                  type="text"
+                              />
+                              <label className={styles.checkLabel}>
+                                  <input type="checkbox"
+                                         name="correct_answer_option"
+                                         value={index + 1}
+                                  /> Correct
+
+                              </label>
+                          </div>
+                      ))}
+                  </div>
+                  <button className={styles.ghostBtn} type="button">
+                      Add another option
+                  </button>
+              </section>
+
+              <div className={styles.submitWrapper}>
+                  <button type="submit" className={styles.primaryBtn}>
+                      Submit
+                  </button>
               </div>
-            ))}
-          </div>
-          <button className={styles.ghostBtn} type="button">
-            Add another option
-          </button>
-        </section>
+
+      </form>
+
+
       </main>
     </div>
+
   );
 }

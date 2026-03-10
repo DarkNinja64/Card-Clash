@@ -1,4 +1,5 @@
 import styles from "./student_home.module.css";
+import Link from "next/link";
 
 export default function PostLoginHome() {
   return (
@@ -12,9 +13,12 @@ export default function PostLoginHome() {
           </div>
         </div>
         <div className={styles.navActions}>
-          <a className={styles.primaryBtn} href="/">
+          <Link className={styles.secondaryBtn} href="/questions">
+            Create questions
+          </Link>
+          <Link className={styles.primaryBtn} href="/">
             Log out
-          </a>
+          </Link>
         </div>
       </header>
 
