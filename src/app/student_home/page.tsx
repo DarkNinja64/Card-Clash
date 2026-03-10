@@ -1,4 +1,5 @@
 import styles from "./student_home.module.css";
+import Link from "next/link";
 
 export default function PostLoginHome() {
   return (

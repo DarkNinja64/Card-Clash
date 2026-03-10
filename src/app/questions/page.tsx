@@ -89,7 +89,11 @@ export default function QuestionsPage() {
                                   type="text"
                               />
                               <label className={styles.checkLabel}>
-                                  <input type="checkbox"/> Correct
+                                  <input type="checkbox"
+                                         name="correct_answer_option"
+                                         value={index + 1}
+                                  /> Correct
+
                               </label>
                           </div>
                       ))}

@@ -19,6 +19,7 @@ export async function createQuestionCard(formData: FormData) {
     const answer_option_2 = (formData.get('answer_option_2') as string) || '';
     const answer_option_3 = (formData.get('answer_option_3') as string) || '';
     const answer_option_4 = (formData.get('answer_option_4') as string) || '';
+    const correct_answer_option = (formData.get('correct_answer_option') as string) || '';
 
     const { data, error } = await supabase
         .from('question_card')
@@ -31,6 +32,7 @@ export async function createQuestionCard(formData: FormData) {
             answer_option_2,
             answer_option_3,
             answer_option_4,
+            correct_answer_option,
         })
         .select()
         .single();
