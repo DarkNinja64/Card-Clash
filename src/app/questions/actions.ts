@@ -11,6 +11,10 @@ export async function createQuestionCard(formData: FormData) {
     // Use admin client to bypass RLS
     const supabase = createAdminClient();
 
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        throw new Error('Missing Supabase environment variables.');
+    }
+
     const category = (formData.get('category') as string) || '';
     const question = (formData.get('question') as string) || '';
     const difficulty = ((formData.get('difficulty') as string) || 'intro').toLowerCase();
@@ -38,7 +42,8 @@ export async function createQuestionCard(formData: FormData) {
         .single();
 
     if (error) {
-        throw new Error('Database error');
+        console.error('Supabase insert error:', error);
+        throw new Error(error.message || 'Database error');
     }
 
     return data;

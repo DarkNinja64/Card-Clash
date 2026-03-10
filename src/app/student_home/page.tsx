@@ -1,3 +1,4 @@
+import Link from "next/link";
 import styles from "./student_home.module.css";
 import Link from "next/link";
 
@@ -30,7 +31,7 @@ export default function PostLoginHome() {
               Join a game or study a question set to prep for the next one
             </p>
             <div className={styles.heroActions}>
-              <a className={styles.primaryBtn} href="/game">
+              <a className={styles.primaryBtn} href="/student_lobby">
                 Join a match
               </a>
               <a className={styles.secondaryBtn} href="/student_study_session">
