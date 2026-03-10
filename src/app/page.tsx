@@ -11,9 +11,6 @@ export default function Home() {
             <p className={styles.brandTag}>Classroom battle arena</p>
           </div>
         </div>
-        <a className={styles.primaryBtn} href="/login">
-          Login
-        </a>
       </header>
 
       <main className={styles.main}>
@@ -39,24 +36,24 @@ export default function Home() {
 
         <section className={styles.modeCard}>
           <div>
-            <h2>Choose your play mode</h2>
+            <h2>Sign In as Teacher or Student</h2>
             <p>
               Login is required before joining a lobby or starting solo study.
             </p>
           </div>
           <div className={styles.modeGrid}>
             <div className={styles.modeOption}>
-              <strong>Study solo</strong>
-              <span>Practice with self-paced questions.</span>
-              <a className={styles.secondaryBtn} href="/login">
-                Login to start
+              <strong>Student Sign In</strong>
+              <span>Join a game or study questions sets</span>
+              <a className={styles.secondaryBtn} href="/student_login">
+                Login as Student
               </a>
             </div>
             <div className={styles.modeOption}>
-              <strong>Party match</strong>
-              <span>Join a live class game with a lobby code.</span>
-              <a className={styles.secondaryBtn} href="/login">
-                Login to join
+              <strong>Teacher Sign In</strong>
+              <span>Start live matches and create question sets</span>
+              <a className={styles.secondaryBtn} href="/teacher_login">
+                Login as Teacher
               </a>
             </div>
           </div>
