@@ -33,7 +33,7 @@ export default function PostLoginHome() {
               <a className={styles.primaryBtn} href="/game">
                 Join a match
               </a>
-              <a className={styles.secondaryBtn} href="/sets">
+              <a className={styles.secondaryBtn} href="/student_study_session">
                 Study a set
               </a>
             </div>
