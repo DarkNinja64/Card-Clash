@@ -1,5 +1,8 @@
+'use client';
+
 import styles from "./student_home.module.css";
 import Link from "next/link";
+import { logOut } from '@/app/auth';
 
 export default function PostLoginHome() {
   return (
@@ -16,9 +19,9 @@ export default function PostLoginHome() {
           <Link className={styles.secondaryBtn} href="/questions">
             Create questions
           </Link>
-          <Link className={styles.primaryBtn} href="/">
-            Log out
-          </Link>
+          <button className={styles.primaryBtn} onClick={() => logOut()}>
+                Log out
+          </button>
         </div>
       </header>
 

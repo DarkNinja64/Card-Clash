@@ -3,7 +3,7 @@
 import styles from "./student_login.module.css";
 
 import { useState } from 'react';
-import { logIn, signUp } from '@/app/auth';
+import { studentLogIn, studentSignUp } from '@/app/auth';
 
 export default function LoginPage() {
 
@@ -15,20 +15,20 @@ export default function LoginPage() {
 
   // Log in and sign up handling
   const handleSignIn = async () => {
-    if (!displayName || !password) return setMessage('Please enter username and password');
+    if (!displayName || !email || !password) return setMessage('Please enter username, email, and password');
     setLoading(true);
-    const result = await logIn(email, password);
+    const result = await studentLogIn(displayName, email, password);
     if (result?.error) setMessage(result.error);
 
     setLoading(false);
   };
 
   const handleSignUp = async () => {
-    if (!displayName || !password) return setMessage('Please enter username and password');
+    if (!displayName || !email || !password) return setMessage('Please enter username, email, and password');
     setLoading(true);
-    const result = await signUp(email, password);
+    const result = await studentSignUp(displayName, email, password);
     if (result?.error) setMessage(result.error);
-    else if (result?.message) setMessage('Account Created! Login to play.');
+    else if (result?.message) setMessage(result.message);
     setLoading(false);
   };
 
@@ -54,7 +54,7 @@ export default function LoginPage() {
               type="text"
               placeholder="username"
               className={styles.input}
-              value= {displayName}
+              value={displayName}
               onChange={e => setDisplayName(e.target.value)}
             />
 
@@ -66,7 +66,7 @@ export default function LoginPage() {
               type="email"
               placeholder="studentemail@school.edu"
               className={styles.input}
-              value= {email}
+              value={email}
               onChange={e => setEmail(e.target.value)}
             />
 
@@ -78,7 +78,7 @@ export default function LoginPage() {
               type="password"
               placeholder="••••••••"
               className={styles.input}
-              value= {password}
+              value={password}
               onChange={e => setPassword(e.target.value)}
             />
             <p style={{ color: 'red' }}>
