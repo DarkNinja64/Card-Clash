@@ -7,7 +7,7 @@
 
 
 import { createServerClient } from '@supabase/ssr';
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function proxy(request: NextRequest) {
     const response = NextResponse.next({ request });
@@ -23,6 +23,17 @@ export async function proxy(request: NextRequest) {
             },
         }
     );
-    await supabase.auth.getUser();
+    const { data: { user} } = await supabase.auth.getUser();
+    const isProtectedRoute = 
+    // protected paths
+        request.nextUrl.pathname.startsWith('/student_home') ||
+        request.nextUrl.pathname.startsWith('/questions') ||
+        request.nextUrl.pathname.startsWith('/student_study_session');
+
+        if (!user && isProtectedRoute) {
+            return NextResponse.redirect(new URL('/student_login', request.url));
+        }
+
+
     return response;
 }
