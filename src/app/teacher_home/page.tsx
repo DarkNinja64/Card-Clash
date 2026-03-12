@@ -14,7 +14,7 @@ export default function PostLoginHome() {
             <p className={styles.brandTag}>Welcome back, Player One</p>
           </div>
         </div>
-        <button className={styles.primaryBtnBtn} onClick={() => logOut()}>
+        <button className={styles.primaryBtn} onClick={() => logOut()}>
                 Log out
           </button>
       </header>
@@ -24,7 +24,7 @@ export default function PostLoginHome() {
           <div>
             <h1>Ready to host a game?</h1>
             <p>
-              Host a game or create a card set to help your students 
+              Host a game or create a card set to help your students
               study the content.
             </p>
             <div className={styles.heroActions}>
