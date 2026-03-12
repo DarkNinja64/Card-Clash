@@ -1,4 +1,7 @@
+'use client';
+
 import styles from "./teacher_home.module.css";
+import { logOut } from '@/app/auth';
 
 export default function PostLoginHome() {
   return (
@@ -11,11 +14,9 @@ export default function PostLoginHome() {
             <p className={styles.brandTag}>Welcome back, Player One</p>
           </div>
         </div>
-        <div className={styles.navActions}>
-          <a className={styles.primaryBtn} href="/">
-            Log out
-          </a>
-        </div>
+        <button className={styles.primaryBtnBtn} onClick={() => logOut()}>
+                Log out
+          </button>
       </header>
 
       <main className={styles.main}>
