@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
-// Student sign in with username validity 
+// Student sign in with username validity
 export async function studentLogIn(username: string, email: string, password: string) {
   const supabase = await createClient();
 
@@ -27,7 +27,7 @@ export async function studentLogIn(username: string, email: string, password: st
       return { error: 'Not a valid student account.'};
     }
 
-  redirect('/student_home');    
+  redirect('/student_home');
 }
 
 // Student sign up
@@ -43,7 +43,7 @@ export async function studentSignUp(username: string, email: string, password: s
 
     if (profileError) return { error: profileError.message};
 
-  return { message: 'Account created successfully! Login to start.' }; 
+  return { message: 'Account created successfully! Login to start.' };
 }
 
 
@@ -84,7 +84,7 @@ export async function teacherSignUp(email: string, password: string) {
 
     if (profileError) return { error: profileError.message};
 
-  return { message: 'Account created successfully! Login to start.' }; 
+  return { message: 'Account created successfully! Login to start.' };
 }
 
 

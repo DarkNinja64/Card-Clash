@@ -1,143 +1,174 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { getSocket } from '@/lib/socket';
+import { io, Socket } from 'socket.io-client';
 import styles from './lobby.module.css';
+import { createGameSession, getTeacherToken } from './actions';
 import UserName from "@/components/UserName";
 
-type Player = { id: string; name: string; score: number };
+type LobbyPhase = 'creating' | 'waiting' | 'error';
 
-type LobbyState = {
-  code: string;
-  hostId: string;
-  status: 'lobby' | 'in_game';
-  round: number;
-  phase: string;
-  players: Player[];
-};
+interface Player {
+    player_id: string;
+    name: string;
+}
 
 export default function LobbyPage() {
-  const socket = useMemo(() => getSocket(), []);
-  const [name, setName] = useState('');
-  const [lobby, setLobby] = useState<LobbyState | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [connected, setConnected] = useState(false);
+    const [phase, setPhase] = useState<LobbyPhase>('creating');
+    const [joinCode, setJoinCode] = useState('');
+    const [sessionId, setSessionId] = useState('');
+    const [errorMsg, setErrorMsg] = useState('');
+    const [players, setPlayers] = useState<Player[]>([]);
 
-  useEffect(() => {
-    const handleConnect = () => setConnected(true);
-    const handleDisconnect = () => setConnected(false);
-    const handleLobby = (data: LobbyState) => {
-      setLobby(data);
-      setError(null);
-    };
-    const handleError = (payload: { message: string }) => setError(payload.message);
+    const socketRef = useRef<Socket | null>(null);
 
-    socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
-    socket.on('lobby_update', handleLobby);
-    socket.on('game_update', handleLobby);
-    socket.on('error_message', handleError);
+    useEffect(() => {
+        let sessionIdCapture = '';
 
-    return () => {
-      socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
-      socket.off('lobby_update', handleLobby);
-      socket.off('game_update', handleLobby);
-      socket.off('error_message', handleError);
-    };
-  }, [socket]);
+        async function setup() {
+            const result = await createGameSession();
+            if (!result.ok) {
+                setErrorMsg(result.error);
+                setPhase('error');
+                return;
+            }
 
-  const createLobby = () => {
-    socket.emit('create_lobby', { name: name.trim() || 'Host' });
-  };
+            setJoinCode(result.join_code);
+            setSessionId(result.session_id);
+            sessionIdCapture = result.session_id;
+            setPhase('waiting');
 
-  const startGame = () => {
-    if (!lobby?.code) return;
-    socket.emit('start_game', { code: lobby.code });
-  };
+            // get the teacher's supabase token to authenticate the socket
+            const tokenResult = await getTeacherToken();
+            if (!tokenResult.token) return;
 
-  const isHost = lobby?.hostId === socket.id;
+            const socket = io('http://localhost:8000', {
+                path: '/socket.io',
+                auth: { token: tokenResult.token },
+            });
 
-  return (
-    <div className={styles.page}>
-      <header className={styles.nav}>
-        <div className={styles.brand}>
-            <p className={styles.brandTag}>Host: <UserName /></p>
-          <span className={styles.brandMark} />
-          <div>
-            <p className={styles.brandTitle}>Card Clash</p>
-            <p className={styles.brandTag}>Multiplayer lobby</p>
-          </div>
-        </div>
-        <div className={styles.navActions}>
-          <Link className={styles.secondaryBtn} href="/teacher_home">Back to Teacher</Link>
-          <Link className={styles.primaryBtn} href="/student_home">Student Home</Link>
-        </div>
-      </header>
+            socketRef.current = socket;
 
-      <main className={styles.main}>
-        <section className={styles.panel}>
-          <h1>Host a party match</h1>
-          <p className={styles.subtle}>Socket status: {connected ? 'Connected' : 'Offline'}</p>
-          {error ? <p className={styles.error}>{error}</p> : null}
-          <div className={styles.formRow}>
-            <label>
-              Display name
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Name"
-                className={styles.input}
-              />
-            </label>
-          </div>
-          <div className={styles.actions}>
-            <button className={styles.primaryBtn} type="button" onClick={createLobby}>
-              Create lobby
-            </button>
-          </div>
-        </section>
+            socket.on('connect', () => {
+                socket.emit('join_lobby', { session_id: sessionIdCapture });
+            });
 
-        <section className={styles.panel}>
-          <h2>Lobby status</h2>
-          {!lobby ? (
-            <p className={styles.subtle}>No lobby joined yet.</p>
-          ) : (
-            <>
-              <div className={styles.lobbyHeader}>
-                <div>
-                  <p className={styles.codeLabel}>Code</p>
-                  <p className={styles.code}>{lobby.code}</p>
+            socket.on('lobby_update', (payload: { players: Player[] }) => {
+                setPlayers(payload.players);
+            });
+        }
+
+        setup();
+
+        return () => {
+            socketRef.current?.disconnect();
+        };
+    }, []);
+
+    if (phase === 'creating') {
+        return (
+            <div className={styles.page}>
+                <header className={styles.nav}>
+                    <div className={styles.brand}>
+                        <p className={styles.brandTag}>Host: <UserName /></p>
+
+                        <span className={styles.brandMark} />
+                        <div>
+                            <p className={styles.brandTitle}>Card Clash</p>
+                            <p className={styles.brandTag}>Setting up your game...</p>
+                        </div>
+                    </div>
+                </header>
+                <main className={styles.main}>
+                    <section className={styles.card}>
+                        <p className={styles.loadingText}>Creating session...</p>
+                    </section>
+                </main>
+            </div>
+        );
+    }
+
+    if (phase === 'error') {
+        return (
+            <div className={styles.page}>
+                <header className={styles.nav}>
+                    <div className={styles.brand}>
+                        <span className={styles.brandMark} />
+                        <div>
+                            <p className={styles.brandTitle}>Card Clash</p>
+                            <p className={styles.brandTag}>Something went wrong</p>
+                        </div>
+                    </div>
+                    <Link className={styles.secondaryBtn} href="/teacher_home">Back</Link>
+                </header>
+                <main className={styles.main}>
+                    <section className={styles.card}>
+                        <h2>Could not start game</h2>
+                        <p className={styles.errorMsg}>{errorMsg}</p>
+                        <Link className={styles.primaryBtn} href="/teacher_home">Go home</Link>
+                    </section>
+                </main>
+            </div>
+        );
+    }
+
+    // phase === 'waiting'
+    return (
+        <div className={styles.page}>
+            <header className={styles.nav}>
+                <div className={styles.brand}>
+                    <span className={styles.brandMark} />
+                    <div>
+                        <p className={styles.brandTitle}>Card Clash</p>
+                        <p className={styles.brandTag}>Waiting for players to join</p>
+                    </div>
                 </div>
-                <div className={styles.actions}>
-                  {isHost ? (
-                    <button className={styles.primaryBtn} type="button" onClick={startGame}>
-                      Start game
-                    </button>
-                  ) : null}
-                  {lobby.status === 'in_game' ? (
-                    <Link className={styles.secondaryBtn} href="/party">
-                      Go to game
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
-              <div className={styles.playerGrid}>
-                {lobby.players.map((player) => (
-                  <div key={player.id} className={styles.playerCard}>
-                    <strong>{player.name}</strong>
-                    <span className={styles.badge}>Score: {player.score}</span>
-                    {player.id === lobby.hostId ? (
-                      <span className={styles.hostBadge}>Host</span>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </section>
-      </main>
-    </div>
-  );
+                <Link className={styles.secondaryBtn} href="/teacher_home">Cancel</Link>
+            </header>
+
+            <main className={styles.main}>
+                <section className={styles.hero}>
+                    <div className={styles.card}>
+                        <h2>Join code</h2>
+                        <p className={styles.joinCode}>{joinCode}</p>
+                        <p className={styles.joinHint}>
+                            Students go to <strong>Card Clash</strong> and enter this code to join.
+                        </p>
+                    </div>
+
+                    <div className={styles.card}>
+                        <h2>Players in lobby ({players.length})</h2>
+                        {players.length === 0 ? (
+                            <p className={styles.waitingMsg}>Waiting for students to join...</p>
+                        ) : (
+                            <ul className={styles.playerList}>
+                                {players.map((p) => (
+                                    <li key={p.player_id}>{p.name}</li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                </section>
+
+                <section className={styles.grid}>
+                    <div className={styles.panel}>
+                        <h3>Game Settings</h3>
+                        <p>Mode: Individual</p>
+                        <p>Rounds: 10</p>
+                        <p>Time per question: 30s</p>
+                    </div>
+                    <div className={styles.panel}>
+                        <h3>Controls</h3>
+                        <button className={styles.primaryBtn} type="button" disabled={players.length === 0}>
+                            Start game
+                        </button>
+                        {players.length === 0 && (
+                            <p className={styles.startHint}>Start will be enabled once players join.</p>
+                        )}
+                    </div>
+                </section>
+            </main>
+        </div>
+    );
 }

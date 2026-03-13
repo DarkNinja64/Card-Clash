@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String, func
+from sqlalchemy import DateTime, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -11,7 +11,7 @@ class GameSession(Base):
     __tablename__ = "game_sessions"
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    host_id: Mapped[str] = mapped_column(String, ForeignKey("users.id"), nullable=False)
+    host_id: Mapped[str] = mapped_column(String, nullable=False)  # Supabase user UUID
     # the 6-char code students type to join — uppercase alphanumeric, guaranteed unique
     join_code: Mapped[str] = mapped_column(String(10), unique=True, nullable=False)
     # lobby, in_progress, or completed
