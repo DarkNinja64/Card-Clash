@@ -68,7 +68,7 @@ export async function teacherLogIn(email: string, password: string) {
   }
 
 
-  redirect('/student_home');    
+  redirect('/teacher_home');
 }
 
 // Teacher sign up

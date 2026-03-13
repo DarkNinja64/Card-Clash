@@ -1,5 +1,4 @@
 import styles from "./questions.module.css";
-// At top of page.tsx
 import { createQuestionCard } from './actions';
 
 
