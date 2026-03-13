@@ -231,7 +231,7 @@ export default function StudyPage() {
                         </button>
                     </section>
                 </main>
-            </div>
+            </   div>
         );
     }
 

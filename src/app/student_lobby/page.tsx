@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
 import styles from './student_lobby.module.css';
+import UserName from "@/components/UserName";
 
 type Player = { id: string; name: string; score: number };
 
@@ -59,6 +60,7 @@ export default function StudentLobbyPage() {
         <div className={styles.brand}>
           <span className={styles.brandMark} />
           <div>
+              <p className={styles.brandTag}>Signed in as <UserName /></p>
             <p className={styles.brandTitle}>Card Clash</p>
             <p className={styles.brandTag}>Student lobby</p>
           </div>

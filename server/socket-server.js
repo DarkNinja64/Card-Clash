@@ -1,3 +1,5 @@
+require('dotenv').config( {path: '.env.local'} );
+
 const http = require('http');
 const { Server } = require('socket.io');
 const {
@@ -8,7 +10,8 @@ const {
   submitAnswer,
   requestSwap,
   requestLock,
-  nextRound
+  nextRound,
+    setQuestionPool,
 } = require('./game-engine');
 
 const PORT = process.env.SOCKET_PORT || 4000;
@@ -22,6 +25,15 @@ const io = new Server(httpServer, {
 });
 
 const lobbies = new Map();
+
+const { createClient } = require('@supabase/supabase-js');
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY  // or anon key if RLS allows
+);
+
+
+
 
 function makeCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -59,14 +71,38 @@ io.on('connection', (socket) => {
     emitLobby(lobby);
   });
 
-  socket.on('start_game', ({ code }) => {
+  socket.on('start_game', async ({ code }) => {
     const lobby = lobbies.get(code);
     if (!lobby || lobby.hostId !== socket.id) {
       socket.emit('error_message', { message: 'Only the host can start the game.' });
       return;
     }
+
+        // Fetch questions inside the async handler
+        const { data: questions, error } = await supabase
+            .from('question_card')
+            .select('*')
+            .limit(20);
+
+    console.log('Supabase fetch:', { error, count: questions?.length, sample: questions?.[0] });
+
+        if (!error && questions?.length > 0) {
+            const mapped = questions.map(q => ({
+                id: q.id,
+                category: q.category,
+                question: q.question,
+                answer: q[`answer_option_${q.correct_answer_option}`]
+            }));
+            setQuestionPool(mapped);
+        } else {
+            setQuestionPool(null);
+        }
+
+
     lobby.status = 'in_game';
     lobby.round = 1;
+
+
     startRound(lobby, emitGame);
   });
 

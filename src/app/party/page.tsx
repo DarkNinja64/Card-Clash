@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
 import styles from './party.module.css';
+import UserName from "@/components/UserName";
 
 type Question = { id: string; category: string; question: string; answer: string };
 type Player = {
@@ -80,6 +81,7 @@ export default function PartyPage() {
         <div className={styles.brand}>
           <span className={styles.brandMark} />
           <div>
+              <p className={styles.brandTag}><UserName /></p>
             <p className={styles.brandTitle}>Card Clash</p>
             <p className={styles.brandTag}>Party mode</p>
           </div>

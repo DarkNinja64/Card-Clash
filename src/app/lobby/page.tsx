@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
 import styles from './lobby.module.css';
+import UserName from "@/components/UserName";
 
 type Player = { id: string; name: string; score: number };
 
@@ -62,6 +63,7 @@ export default function LobbyPage() {
     <div className={styles.page}>
       <header className={styles.nav}>
         <div className={styles.brand}>
+            <p className={styles.brandTag}>Host: <UserName /></p>
           <span className={styles.brandMark} />
           <div>
             <p className={styles.brandTitle}>Card Clash</p>

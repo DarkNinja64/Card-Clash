@@ -1,6 +1,6 @@
 import Link from "next/link";
 import styles from "./student_home.module.css";
-import Link from "next/link";
+import UserName from "@/components/UserName";
 
 export default function PostLoginHome() {
   return (
@@ -10,7 +10,7 @@ export default function PostLoginHome() {
           <span className={styles.brandMark} />
           <div>
             <p className={styles.brandTitle}>Card Clash</p>
-            <p className={styles.brandTag}>Welcome back, Player One</p>
+            <p className={styles.brandTag}>Welcome back, <UserName/></p>
           </div>
         </div>
         <div className={styles.navActions}>
