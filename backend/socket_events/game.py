@@ -4,7 +4,7 @@
 
 import socketio
 
-from services.auth_service import decode_token
+from services.auth_service import decode_token, decode_supabase_token
 
 # live game state keyed by session_id, each session has players, status, current_round, and answers
 _game_state: dict = {}
@@ -15,19 +15,26 @@ def register_handlers(sio: socketio.AsyncServer):
     @sio.event
     async def connect(sid, environ, auth):
         token = (auth or {}).get("token", "")
+        # try backend-issued student token first, then Supabase teacher token
+        # the resolved role is stored explicitly so later handlers don't need to re-decode
         payload = decode_token(token)
-        if not payload:
-            # no token or bad token — kick them immediately, don't let unauthenticated sockets hang around
-            await sio.disconnect(sid)
-            return False
+        if payload:
+            role = payload.get("role", "student")
+        else:
+            payload = decode_supabase_token(token)
+            if payload:
+                role = "teacher"  # Supabase tokens are always teachers in this app
+            else:
+                # no token or bad token — kick them immediately, don't let unauthenticated sockets hang around
+                await sio.disconnect(sid)
+                return False
 
-        role = payload.get("role")
-        # session_id is only embedded in student tokens — teachers don't belong to a specific session
+        # session_id is only embedded in student tokens — teachers don't belong to a specific session at connect time
         session_id = payload.get("session_id") if role == "student" else None
         player_id = payload.get("sub")
 
         # store their identity on the socket so every event handler can grab it without re-decoding
-        await sio.save_session(sid, {"payload": payload, "session_id": session_id})
+        await sio.save_session(sid, {"payload": payload, "role": role, "session_id": session_id})
 
         if session_id:
             await sio.enter_room(sid, f"session_{session_id}")
@@ -86,8 +93,7 @@ def register_handlers(sio: socketio.AsyncServer):
     async def start_game(sid, data):
         # teacher starts the game and sends the question list
         session = await sio.get_session(sid)
-        payload = session.get("payload", {})
-        if payload.get("role") != "teacher":
+        if session.get("role") != "teacher":
             return
 
         session_id = data.get("session_id")
@@ -134,8 +140,7 @@ def register_handlers(sio: socketio.AsyncServer):
     async def advance_round(sid, data):
         # teacher moves to the next question after seeing the results
         session = await sio.get_session(sid)
-        payload = session.get("payload", {})
-        if payload.get("role") != "teacher":
+        if session.get("role") != "teacher":
             return
 
         session_id = data.get("session_id")

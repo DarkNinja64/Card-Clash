@@ -1,0 +1,198 @@
+.page {
+  min-height: 100vh;
+  background: radial-gradient(1200px 700px at 10% 10%, rgba(255, 209, 102, 0.25), transparent 60%),
+    radial-gradient(900px 600px at 90% 0%, rgba(64, 224, 208, 0.22), transparent 55%),
+    linear-gradient(135deg, #1b1033 0%, #0f1a2b 45%, #102a43 100%);
+  color: #f7f3ff;
+  padding: 0 4vw 80px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px 0 16px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brandMark {
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  background: conic-gradient(from 120deg, #ffcf5c, #ff6f3c, #9c5bff, #2ee6d6, #ffcf5c);
+  box-shadow: 0 12px 28px rgba(255, 207, 92, 0.35);
+}
+
+.brandTitle {
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.brandTag {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(247, 243, 255, 0.7);
+}
+
+.main {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  gap: 28px;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  align-items: start;
+  padding: 24px 0;
+}
+
+.primaryBtn,
+.secondaryBtn,
+.ghostBtn {
+  border-radius: 999px;
+  padding: 12px 20px;
+  font-weight: 600;
+  border: 2px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.primaryBtn {
+  background: linear-gradient(120deg, #ffcf5c, #ff6f3c);
+  color: #1b1033;
+  box-shadow: 0 16px 30px rgba(255, 111, 60, 0.3);
+}
+
+.primaryBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.secondaryBtn {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #f7f3ff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ghostBtn {
+  background: rgba(156, 91, 255, 0.2);
+  color: #f7f3ff;
+  border-color: transparent;
+}
+
+.primaryBtn:not(:disabled):hover,
+.secondaryBtn:hover,
+.ghostBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 34px rgba(255, 207, 92, 0.25);
+}
+
+.card,
+.panel {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow: 0 16px 28px rgba(10, 5, 20, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.card h2,
+.panel h3 {
+  margin: 0 0 14px;
+}
+
+.grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.panel {
+  display: grid;
+  gap: 10px;
+}
+
+/* Join code display */
+.joinCode {
+  font-size: clamp(2.8rem, 6vw, 5rem);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  margin: 8px 0 16px;
+  background: linear-gradient(120deg, #ffcf5c, #ff6f3c);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.joinHint {
+  color: rgba(247, 243, 255, 0.7);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.waitingMsg {
+  color: rgba(247, 243, 255, 0.6);
+  font-style: italic;
+  margin: 0 0 8px;
+}
+
+.sessionId {
+  font-size: 0.75rem;
+  color: rgba(247, 243, 255, 0.35);
+  margin: 0;
+}
+
+.playerList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.playerList li {
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 8px 14px;
+  color: rgba(247, 243, 255, 0.85);
+}
+
+.startHint {
+  font-size: 0.8rem;
+  color: rgba(247, 243, 255, 0.5);
+  margin: 0;
+}
+
+.loadingText {
+  color: rgba(247, 243, 255, 0.7);
+  font-style: italic;
+}
+
+.errorMsg {
+  color: #ff6f6f;
+  margin: 8px 0 20px;
+}
+
+@media (max-width: 700px) {
+  .nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

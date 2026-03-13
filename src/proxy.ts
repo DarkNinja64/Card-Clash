@@ -24,16 +24,29 @@ export async function proxy(request: NextRequest) {
         }
     );
     const { data: { user} } = await supabase.auth.getUser();
-    const isProtectedRoute = 
-    // protected paths
+    const isStudentRoute =
         request.nextUrl.pathname.startsWith('/student_home') ||
         request.nextUrl.pathname.startsWith('/questions') ||
         request.nextUrl.pathname.startsWith('/student_study_session');
 
-        if (!user && isProtectedRoute) {
+    const isTeacherRoute =
+        request.nextUrl.pathname.startsWith('/teacher_home') ||
+        request.nextUrl.pathname.startsWith('/lobby');
+
+        if (!user && isStudentRoute) {
             return NextResponse.redirect(new URL('/student_login', request.url));
+        }
+
+        if (!user && isTeacherRoute) {
+            return NextResponse.redirect(new URL('/teacher_login', request.url));
         }
 
 
     return response;
 }
+
+export const config = {
+    matcher: [
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    ],
+};
