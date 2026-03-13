@@ -51,6 +51,10 @@
     color: rgba(247, 243, 255, 0.85);
 }
 
+.subtle {
+    color: rgba(247, 243, 255, 0.7);
+}
+
 .primaryBtn,
 .secondaryBtn,
 .ghostBtn{
@@ -129,6 +133,30 @@
 .wrong {
     color: #ff6f3c;
     font-weight: 600;
+}
+
+.aiBox {
+    margin: 16px 0 12px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(10, 10, 20, 0.5);
+}
+
+.aiBox h3 {
+    margin: 0 0 8px;
+    font-size: 1rem;
+}
+
+.aiText {
+    margin: 0;
+    color: rgba(247, 243, 255, 0.9);
+    line-height: 1.5;
+}
+
+.aiError {
+    color: #ffb4a2;
+    margin: 0;
 }
 
 .finalScore {

@@ -49,6 +49,9 @@ export default function StudyPage() {
     const [timer, setTimer] = useState(0);
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
     const [lastResult, setLastResult] = useState<{ isCorrect: boolean; points: number } | null>(null);
+    const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiError, setAiError] = useState<string | null>(null);
     const [timeStarted, setTimeStarted] = useState<number | null>(null);
     const [loadingCategories, setLoadingCategories] = useState(true);
     const [loadingQuestions, setLoadingQuestions] = useState(false);
@@ -116,6 +119,28 @@ export default function StudyPage() {
             setScore((s) => s + points);
             setLastResult({ isCorrect, points });
             setPhase('result');
+
+            setAiLoading(true);
+            setAiFeedback(null);
+            setAiError(null);
+            fetch('/api/study-feedback', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question: question.text,
+                    correctAnswer: question.correct_answer,
+                    userAnswer: answer,
+                    isCorrect,
+                }),
+            })
+                .then((res) => res.json())
+                .then((data) => {
+                    setAiFeedback(data?.feedback || null);
+                })
+                .catch(() => {
+                    setAiError('AI feedback unavailable.');
+                })
+                .finally(() => setAiLoading(false));
         },
         [question, selectedAnswer, timeStarted]
     );
@@ -159,6 +184,9 @@ export default function StudyPage() {
         setScore(0);
         setSelectedAnswer(null);
         setLastResult(null);
+        setAiFeedback(null);
+        setAiError(null);
+        setAiLoading(false);
         setTimeStarted(null);
     };
 
@@ -268,6 +296,12 @@ export default function StudyPage() {
                             {lastResult ? ` (+${lastResult.points} pts)` : ''}
                         </p>
                         <p>Score: {score}</p>
+                        <div className={styles.aiBox}>
+                            <h3>Study feedback</h3>
+                            {aiLoading && <p className={styles.subtle}>Generating feedback...</p>}
+                            {aiError && <p className={styles.aiError}>{aiError}</p>}
+                            {aiFeedback && <p className={styles.aiText}>{aiFeedback}</p>}
+                        </div>
                         <button className={styles.primaryBtn} onClick={nextRound}>
                             {currentRound + 1 >= totalRounds ? 'See results' : 'Next question'}
                         </button>
