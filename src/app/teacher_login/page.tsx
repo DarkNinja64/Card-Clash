@@ -1,6 +1,35 @@
+'use client';
+
 import styles from "./teacher_login.module.css";
+import { useState } from 'react';
+import { teacherLogIn, teacherSignUp } from '@/app/auth';
 
 export default function LoginPage() {
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Log in and sign up handling
+  const handleSignIn = async () => {
+    if (!email || !password) return setMessage('Please enter email and password');
+    setLoading(true);
+    const result = await teacherLogIn(email, password);
+    if (result?.error) setMessage(result.error);
+    setLoading(false);
+  };
+
+  const handleSignUp = async () => {
+    if ( !email || !password) return setMessage('Please enter email and password');
+    setLoading(true);
+    const result = await teacherSignUp(email, password);
+    if (result?.error) setMessage(result.error);
+    else if (result?.message) setMessage(result.message);
+    setLoading(false);
+  };
+
+
   return (
     <div className={styles.page}>
       <main className={styles.card}>
@@ -23,6 +52,8 @@ export default function LoginPage() {
               type="email"
               placeholder="myemail@school.edu"
               className={styles.input}
+              value={email}
+              onChange={e => setEmail(e.target.value)}
             />
             <label className={styles.label} htmlFor="teacher-pass">
               Password
@@ -32,14 +63,28 @@ export default function LoginPage() {
               type="password"
               placeholder="••••••••"
               className={styles.input}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
             />
+             <p style={{ color: 'red' }}>
+              {message}
+            </p>
             <div className={styles.actions}>
-              <a className={styles.primaryBtn} href="/teacher_home">
-                Login
-              </a>
-              <a className={styles.ghostBtn} href="/teacher_home">
+              <button
+                className={styles.primaryBtn}
+                onClick={handleSignIn}
+                disabled={loading}
+              >
+                {loading ? 'Loading...' : 'Login'}
+              </button>
+
+              <button
+                className={styles.ghostBtn}
+                onClick={handleSignUp}
+                disabled={loading}
+              >
                 Create Teacher Account
-              </a>
+              </button>
             </div>
           </section>
         </div>
