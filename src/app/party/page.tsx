@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
 import styles from './party.module.css';
 import UserName from "@/components/UserName";
+import {Socket} from "socket.io-client";
+import {createClient} from "@/lib/supabase/client";
 
 type Question = { id: string; category: string; question: string; answer: string };
 type Player = {
@@ -31,47 +33,64 @@ type LobbyState = {
 };
 
 export default function PartyPage() {
-  const socket = useMemo(() => getSocket(), []);
-  const [lobby, setLobby] = useState<LobbyState | null>(null);
-  const [now, setNow] = useState(Date.now());
+    const [socket, setSocket] = useState<Socket | null>(null);
+    const [now, setNow] = useState<number>(Date.now());
+    const [lobby, setLobby] = useState<LobbyState | null>(null);
 
-  useEffect(() => {
-    const handleLobby = (data: LobbyState) => setLobby(data);
-    socket.on('game_update', handleLobby);
-    socket.on('lobby_update', handleLobby);
-    return () => {
-      socket.off('game_update', handleLobby);
-      socket.off('lobby_update', handleLobby);
-    };
-  }, [socket]);
+    useEffect(() => {
+        async function connect() {
+            const supabase = createClient();
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.access_token) return;
+            setSocket(getSocket(session.access_token));
+        }
+        connect();
+    }, []);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(interval);
   }, []);
 
+    useEffect(() => {
+        if (!socket) return;
+
+        socket.on('lobby_update', (data) => {
+            setLobby(data);
+        });
+
+        socket.on('game_update', (data) => {
+            setLobby(data);
+        });
+
+        return () => {
+            socket.off('lobby_update');
+            socket.off('game_update');
+        };
+    }, [socket]);
+
   const submitAnswer = (correct: boolean) => {
-    if (!lobby?.code) return;
+    if (!lobby?.code || !socket) return;
     socket.emit('submit_answer', { code: lobby.code, correct });
   };
 
   const requestSwap = () => {
-    if (!lobby?.code) return;
+    if (!lobby?.code || !socket) return;
     socket.emit('request_swap', { code: lobby.code });
   };
 
   const requestLock = () => {
-    if (!lobby?.code) return;
+    if (!lobby?.code || !socket) return;
     socket.emit('request_lock', { code: lobby.code });
   };
 
   const nextRound = () => {
-    if (!lobby?.code) return;
+    if (!lobby?.code || !socket) return;
     socket.emit('next_round', { code: lobby.code });
   };
 
-  const isHost = lobby?.hostId === socket.id;
-  const me = lobby?.players.find((p) => p.id === socket.id) || null;
+  const isHost = socket && lobby?.hostId === socket.id;
+  const me = socket && lobby?.players.find((p) => p.id === socket.id) || null;
   const timeLeftMs = lobby?.phaseEndsAt ? Math.max(lobby.phaseEndsAt - now, 0) : null;
   const timeLeft = timeLeftMs ? Math.ceil(timeLeftMs / 1000) : null;
 

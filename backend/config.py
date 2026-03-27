@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str    # from Supabase dashboard → Settings → API → JWT Settings → JWT Secret
                                 # used to verify teacher tokens issued by Supabase instead of us
     supabase_url: str           # project URL, e.g. https://xyz.supabase.co — used to fetch JWKS
+    supabase_anon_key: str | None = None        # for Supabase REST API (e.g. question_card fetch)
+    supabase_service_role_key: str | None = None  # preferred for question fetch; bypasses RLS
 
     class Config:
         env_file = ".env"

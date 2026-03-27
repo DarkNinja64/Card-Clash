@@ -78,6 +78,10 @@ io.on('connection', (socket) => {
       return;
     }
 
+      socket.on('game_start', (payload) => {
+
+      });
+
         // Fetch questions inside the async handler
         const { data: questions, error } = await supabase
             .from('question_card')
@@ -129,6 +133,8 @@ io.on('connection', (socket) => {
     if (!lobby || lobby.hostId !== socket.id) return;
     nextRound(lobby, emitGame);
   });
+
+
 
   socket.on('disconnect', () => {
     for (const lobby of lobbies.values()) {

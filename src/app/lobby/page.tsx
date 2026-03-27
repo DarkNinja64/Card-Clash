@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
 import styles from './lobby.module.css';
-import { createGameSession, getTeacherToken } from './actions';
+import {createGameSession, fetchQuestionsForGame, getTeacherToken} from './actions';
 import UserName from "@/components/UserName";
 
 type LobbyPhase = 'creating' | 'waiting' | 'error';
@@ -14,6 +14,8 @@ interface Player {
     name: string;
 }
 
+
+
 export default function LobbyPage() {
     const [phase, setPhase] = useState<LobbyPhase>('creating');
     const [joinCode, setJoinCode] = useState('');
@@ -22,6 +24,17 @@ export default function LobbyPage() {
     const [players, setPlayers] = useState<Player[]>([]);
 
     const socketRef = useRef<Socket | null>(null);
+
+    const handleStartGame = async () => {
+        if (!sessionId || players.length === 0) return;
+        const questions = await fetchQuestionsForGame(); // Maybe pass category?
+        if (questions.length === 0) {
+            setErrorMsg('No questions available. Add questions first.');
+            return;
+        }
+        socketRef.current?.emit('start_game', { session_id: sessionId, questions });
+
+    };
 
     useEffect(() => {
         let sessionIdCapture = '';
@@ -60,6 +73,8 @@ export default function LobbyPage() {
         }
 
         setup();
+
+
 
         return () => {
             socketRef.current?.disconnect();
@@ -160,7 +175,7 @@ export default function LobbyPage() {
                     </div>
                     <div className={styles.panel}>
                         <h3>Controls</h3>
-                        <button className={styles.primaryBtn} type="button" disabled={players.length === 0}>
+                        <button className={styles.primaryBtn} type="button" disabled={players.length === 0} onClick={handleStartGame}>
                             Start game
                         </button>
                         {players.length === 0 && (
