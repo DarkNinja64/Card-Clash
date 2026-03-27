@@ -15,6 +15,8 @@ const QUESTION_POOL = [
   { id: 'q10', category: 'Bio', question: 'DNA stands for?', answer: 'Deoxyribonucleic acid' }
 ];
 
+let custom_question_pool = null;
+
 function shuffle(list) {
   for (let i = list.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -76,16 +78,21 @@ function serializeLobby(lobby) {
 
 function assignQuestions(lobby) {
   const players = Array.from(lobby.players.values());
-  const pool = shuffle([...QUESTION_POOL]);
+    const source = custom_question_pool || QUESTION_POOL;
+    const pool = shuffle([...source]);
   if (players.length > pool.length) {
     while (pool.length < players.length) {
-      pool.push(...QUESTION_POOL.map((q, idx) => ({ ...q, id: `${q.id}-x${idx}-${pool.length}` })));
+      pool.push(...source.map((q, idx) => ({ ...q, id: `${q.id}-x${idx}-${pool.length}` })));
     }
   }
   players.forEach((player, index) => {
     const q = pool[index % pool.length];
     player.question = q;
   });
+}
+
+function setQuestionPool(pool) {
+    custom_question_pool = Array.isArray(pool) && pool.length > 0 ? pool : null;
 }
 
 function resetRoundState(lobby) {
@@ -187,5 +194,6 @@ module.exports = {
   submitAnswer,
   requestSwap,
   requestLock,
-  nextRound
+  nextRound,
+    setQuestionPool
 };

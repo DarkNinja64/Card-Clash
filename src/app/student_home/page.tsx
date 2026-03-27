@@ -1,6 +1,7 @@
 'use client';
 
 import styles from "./student_home.module.css";
+import UserName from "@/components/UserName";
 import Link from "next/link";
 import { logOut } from '@/app/auth';
 
@@ -12,7 +13,7 @@ export default function PostLoginHome() {
           <span className={styles.brandMark} />
           <div>
             <p className={styles.brandTitle}>Card Clash</p>
-            <p className={styles.brandTag}>Welcome back, Player One</p>
+            <p className={styles.brandTag}>Welcome back, <UserName/></p>
           </div>
         </div>
         <div className={styles.navActions}>
@@ -33,7 +34,7 @@ export default function PostLoginHome() {
               Join a game or study a question set to prep for the next one
             </p>
             <div className={styles.heroActions}>
-              <a className={styles.primaryBtn} href="/student_lobby">
+              <a className={styles.primaryBtn} href="/game">
                 Join a match
               </a>
               <a className={styles.secondaryBtn} href="/student_study_session">

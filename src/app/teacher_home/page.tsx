@@ -1,6 +1,7 @@
 'use client';
 
 import styles from "./teacher_home.module.css";
+import UserName from "@/components/UserName";
 import { logOut } from '@/app/auth';
 
 export default function PostLoginHome() {
@@ -11,7 +12,7 @@ export default function PostLoginHome() {
           <span className={styles.brandMark} />
           <div>
             <p className={styles.brandTitle}>Card Clash</p>
-            <p className={styles.brandTag}>Welcome back, Player One</p>
+            <p className={styles.brandTag}>Welcome back, <UserName/></p>
           </div>
         </div>
         <button className={styles.primaryBtn} onClick={() => logOut()}>

@@ -6,13 +6,19 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     database_url: str           # SQLAlchemy connection string — prefix tells it which driver to use
     redis_url: str              # reserved for socket.io scaling, not actively wired up yet
-    jwt_secret: str             # signs and verifies all tokens — must be secret and random in prod
+    jwt_secret: str             # signs student join tokens only — teachers get tokens from Supabase
     jwt_algorithm: str = "HS256"        # symmetric signing, one secret for both sign and verify
-    jwt_expire_minutes: int = 480       # 8 hours — lenght of average school day
+    jwt_expire_minutes: int = 480       # 8 hours — length of average school day
     frontend_origin: str = "http://localhost:3000"  # must exactly match the next.js URL for CORS
+    supabase_jwt_secret: str    # from Supabase dashboard → Settings → API → JWT Settings → JWT Secret
+                                # used to verify teacher tokens issued by Supabase instead of us
+    supabase_url: str           # project URL, e.g. https://xyz.supabase.co — used to fetch JWKS
+    supabase_anon_key: str | None = None        # for Supabase REST API (e.g. question_card fetch)
+    supabase_service_role_key: str | None = None  # preferred for question fetch; bypasses RLS
 
     class Config:
         env_file = ".env"
+        extra = "ignore"  # extra vars like test credentials don't cause startup failures
 
 
 # module-level singleton — import this anywhere in the app to access config
