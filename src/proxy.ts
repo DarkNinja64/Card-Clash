@@ -29,7 +29,6 @@ export async function proxy(request: NextRequest) {
     const { data: { user} } = await supabase.auth.getUser();
     const isStudentRoute =
         request.nextUrl.pathname.startsWith('/student_home') ||
-        request.nextUrl.pathname.startsWith('/create_questions') ||
         request.nextUrl.pathname.startsWith('/student_study_session');
 
     const isTeacherRoute =
