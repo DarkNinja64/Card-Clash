@@ -36,7 +36,7 @@ export async function fetchQuestionsForStudySession(category?: string): Promise<
         .order('created_at', { ascending: false })
         .limit(20);
 
-    if (error) throw new Error('Failed to fetch questions');
+    if (error) throw new Error('Failed to fetch create_questions');
 
     return (data ?? []).map((row) => {
         const opts = [

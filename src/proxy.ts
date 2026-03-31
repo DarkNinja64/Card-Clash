@@ -23,35 +23,27 @@ export async function proxy(request: NextRequest) {
             },
         }
     );
-    const { data: { user} } = await supabase.auth.getUser();
-    const isProtectedRoute =
-    // protected paths
-        request.nextUrl.pathname.startsWith('/student_home') ||
-        request.nextUrl.pathname.startsWith('/questions') ||
-        request.nextUrl.pathname.startsWith('/student_study_session');
 
-        const bypass = request.nextUrl.searchParams.get('bypass') === '1';
-
-        if (!user && isProtectedRoute && !bypass) {
-            return NextResponse.redirect(new URL('/student_login', request.url));
-        }
 
 
     const { data: { user} } = await supabase.auth.getUser();
     const isStudentRoute =
         request.nextUrl.pathname.startsWith('/student_home') ||
-        request.nextUrl.pathname.startsWith('/questions') ||
+        request.nextUrl.pathname.startsWith('/create_questions') ||
         request.nextUrl.pathname.startsWith('/student_study_session');
 
     const isTeacherRoute =
         request.nextUrl.pathname.startsWith('/teacher_home') ||
         request.nextUrl.pathname.startsWith('/lobby');
 
-        if (!user && isStudentRoute) {
+    const bypass = request.nextUrl.searchParams.get('bypass') === '1';
+
+
+    if (!user && isStudentRoute && !bypass) {
             return NextResponse.redirect(new URL('/student_login', request.url));
         }
 
-        if (!user && isTeacherRoute) {
+        if (!user && isTeacherRoute && !bypass) {
             return NextResponse.redirect(new URL('/teacher_login', request.url));
         }
 

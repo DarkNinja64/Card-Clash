@@ -2,7 +2,6 @@
 
 import styles from "./student_home.module.css";
 import UserName from "@/components/UserName";
-import Link from "next/link";
 import { logOut } from '@/app/auth';
 
 export default function PostLoginHome() {
@@ -17,9 +16,7 @@ export default function PostLoginHome() {
           </div>
         </div>
         <div className={styles.navActions}>
-          <Link className={styles.secondaryBtn} href="/questions">
-            Create questions
-          </Link>
+
           <button className={styles.primaryBtn} onClick={() => logOut()}>
                 Log out
           </button>
@@ -37,7 +34,7 @@ export default function PostLoginHome() {
               <a className={styles.primaryBtn} href="/game">
                 Join a match
               </a>
-              <a className={styles.secondaryBtn} href="/student_study_session">
+              <a className={styles.secondaryBtn} href="/student_study_session?bypass=1">
                 Study a set
               </a>
             </div>

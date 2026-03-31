@@ -29,7 +29,7 @@ export default function LobbyPage() {
         if (!sessionId || players.length === 0) return;
         const questions = await fetchQuestionsForGame(); // Maybe pass category?
         if (questions.length === 0) {
-            setErrorMsg('No questions available. Add questions first.');
+            setErrorMsg('No create_questions available. Add create_questions first.');
             return;
         }
         socketRef.current?.emit('start_game', { session_id: sessionId, questions });

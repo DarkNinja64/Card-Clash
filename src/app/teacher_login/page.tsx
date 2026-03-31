@@ -86,7 +86,7 @@ export default function LoginPage() {
                 Create Teacher Account
               </button>
 
-              <a className={styles.ghostBtn} href="/teacher_home">
+              <a className={styles.ghostBtn} href="/teacher_home?bypass=1">
                 Bypass (Test)
               </a>
             </div>

@@ -82,7 +82,7 @@ io.on('connection', (socket) => {
 
       });
 
-        // Fetch questions inside the async handler
+        // Fetch create_questions inside the async handler
         const { data: questions, error } = await supabase
             .from('question_card')
             .select('*')
