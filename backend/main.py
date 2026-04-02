@@ -7,7 +7,7 @@ from database import create_tables
 from routers.auth import router as auth_router
 from routers.sessions import router as sessions_router
 from socket_events.game import register_handlers
-from socket_events.party import PartyNamespace
+#from socket_events.party import PartyNamespace
 
 # socket.io server — has to be created before the fastapi app so we can
 # wrap both of them together at the bottom with ASGIApp
@@ -16,7 +16,7 @@ sio = socketio.AsyncServer(
     cors_allowed_origins=[settings.frontend_origin],  # only the frontend can connect
 )
 register_handlers(sio)  # wire up all the game event handlers from socket_events/game.py
-sio.register_namespace(PartyNamespace("/party"))
+#sio.register_namespace(PartyNamespace("/party"))
 
 # fastapi app — handles all the REST endpoints
 app = FastAPI(title="Card Clash API", version="0.1.0")
