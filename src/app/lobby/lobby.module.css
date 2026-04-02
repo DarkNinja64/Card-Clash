@@ -190,6 +190,26 @@
   margin: 8px 0 20px;
 }
 
+.timer {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #ffcf5c;
+  margin: 0;
+}
+
+.settingRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: rgba(247, 243, 255, 0.85);
+}
+
+.slider {
+  width: 100%;
+  accent-color: #ffcf5c;
+}
+
 @media (max-width: 700px) {
   .nav {
     flex-direction: column;

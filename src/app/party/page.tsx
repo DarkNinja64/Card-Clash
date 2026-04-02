@@ -25,8 +25,10 @@ type Player = {
 type LobbyState = {
   code: string;
   hostId: string;
-  status: 'lobby' | 'in_game';
+  status: 'lobby' | 'in_game' | 'game_over';
   round: number;
+  maxRounds: number;
+  timerS: number;
   phase: string;
   phaseEndsAt: number | null;
   players: Player[];
@@ -94,6 +96,38 @@ export default function PartyPage() {
   const timeLeftMs = lobby?.phaseEndsAt ? Math.max(lobby.phaseEndsAt - now, 0) : null;
   const timeLeft = timeLeftMs ? Math.ceil(timeLeftMs / 1000) : null;
 
+  if (lobby?.phase === 'game_over') {
+    const sorted = [...lobby.players].sort((a, b) => b.score - a.score);
+    return (
+      <div className={styles.page}>
+        <header className={styles.nav}>
+          <div className={styles.brand}>
+            <span className={styles.brandMark} />
+            <div>
+              <p className={styles.brandTag}><UserName /></p>
+              <p className={styles.brandTitle}>Card Clash</p>
+              <p className={styles.brandTag}>Game over</p>
+            </div>
+          </div>
+        </header>
+        <main className={styles.main}>
+          <section className={styles.panel}>
+            <h2>Final Standings</h2>
+            <div className={styles.playerGrid}>
+              {sorted.map((p, i) => (
+                <div key={p.id} className={styles.playerCard}>
+                  <strong>#{i + 1} {p.name}</strong>
+                  <span className={styles.badge}>{p.score} pts</span>
+                </div>
+              ))}
+            </div>
+            <Link className={styles.primaryBtn} href="/student_home">Back to home</Link>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.page}>
       <header className={styles.nav}>
@@ -106,7 +140,7 @@ export default function PartyPage() {
           </div>
         </div>
         <div className={styles.navActions}>
-          <Link className={styles.secondaryBtn} href="/lobby">Back to Lobby</Link>
+          <Link className={styles.secondaryBtn} href="/student_home">Leave game</Link>
         </div>
       </header>
 
@@ -123,7 +157,7 @@ export default function PartyPage() {
               </div>
               <div>
                 <p className={styles.subtle}>Round</p>
-                <p className={styles.round}>{lobby.round || 1}</p>
+                <p className={styles.round}>{lobby.round || 1} / {lobby.maxRounds}</p>
               </div>
               <div>
                 <p className={styles.subtle}>Phase</p>

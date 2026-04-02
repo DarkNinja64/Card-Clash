@@ -23,24 +23,45 @@ export async function proxy(request: NextRequest) {
             },
         }
     );
-    const { data: { user} } = await supabase.auth.getUser();
-    const isStudentRoute =
-        request.nextUrl.pathname.startsWith('/student_home') ||
-        request.nextUrl.pathname.startsWith('/questions') ||
-        request.nextUrl.pathname.startsWith('/student_study_session');
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const path = request.nextUrl.pathname;
 
     const isTeacherRoute =
-        request.nextUrl.pathname.startsWith('/teacher_home') ||
-        request.nextUrl.pathname.startsWith('/lobby');
+        path.startsWith('/teacher_home') ||
+        path.startsWith('/lobby');
 
-        if (!user && isStudentRoute) {
-            return NextResponse.redirect(new URL('/student_login', request.url));
+    const isStudentRoute =
+        path.startsWith('/student_home') ||
+        path.startsWith('/student_lobby') ||
+        path.startsWith('/party') ||
+        path.startsWith('/student_study_session');
+
+    // redirect unauthenticated users to the right login page
+    if (!user && isTeacherRoute) {
+        return NextResponse.redirect(new URL('/teacher_login', request.url));
+    }
+    if (!user && isStudentRoute) {
+        return NextResponse.redirect(new URL('/student_login', request.url));
+    }
+
+    // role-based protection — only query profiles when on a guarded route
+    if (user && (isTeacherRoute || isStudentRoute)) {
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        const role = profile?.role;
+
+        if (role === 'student' && isTeacherRoute) {
+            return NextResponse.redirect(new URL('/student_home', request.url));
         }
-
-        if (!user && isTeacherRoute) {
-            return NextResponse.redirect(new URL('/teacher_login', request.url));
+        if (role === 'teacher' && isStudentRoute) {
+            return NextResponse.redirect(new URL('/teacher_home', request.url));
         }
-
+    }
 
     return response;
 }

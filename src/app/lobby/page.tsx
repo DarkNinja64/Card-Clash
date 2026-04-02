@@ -4,59 +4,64 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
 import styles from './lobby.module.css';
-import {createGameSession, fetchQuestionsForGame, getTeacherToken} from './actions';
+import { getTeacherToken } from './actions';
 import UserName from "@/components/UserName";
 
-type LobbyPhase = 'creating' | 'waiting' | 'error';
-
-interface Player {
-    player_id: string;
+type Question = { id: string; category: string; question: string; answer: string };
+type Player = {
+    id: string;
     name: string;
-}
+    score: number;
+    question?: Question | null;
+    answered: boolean;
+    swapUsed: boolean;
+    lockUsed: boolean;
+    wantsSwap: boolean;
+    wantsLock: boolean;
+    swappedThisRound: boolean;
+};
 
+type LobbyState = {
+    code: string;
+    hostId: string;
+    status: 'lobby' | 'in_game' | 'game_over';
+    round: number;
+    maxRounds: number;
+    timerS: number;
+    phase: string;
+    phaseEndsAt: number | null;
+    players: Player[];
+};
 
+type PagePhase = 'connecting' | 'waiting' | 'in_game' | 'error';
 
 export default function LobbyPage() {
-    const [phase, setPhase] = useState<LobbyPhase>('creating');
-    const [joinCode, setJoinCode] = useState('');
-    const [sessionId, setSessionId] = useState('');
+    const [pagePhase, setPagePhase] = useState<PagePhase>('connecting');
+    const [lobby, setLobby] = useState<LobbyState | null>(null);
     const [errorMsg, setErrorMsg] = useState('');
-    const [players, setPlayers] = useState<Player[]>([]);
+    const [now, setNow] = useState(Date.now());
+    const [rounds, setRounds] = useState(5);
+    const [timerSeconds, setTimerSeconds] = useState(20);
 
     const socketRef = useRef<Socket | null>(null);
 
-    const handleStartGame = async () => {
-        if (!sessionId || players.length === 0) return;
-        const questions = await fetchQuestionsForGame(); // Maybe pass category?
-        if (questions.length === 0) {
-            setErrorMsg('No questions available. Add questions first.');
-            return;
-        }
-        socketRef.current?.emit('start_game', { session_id: sessionId, questions });
-
-    };
+    // ticker for countdown display
+    useEffect(() => {
+        const interval = setInterval(() => setNow(Date.now()), 500);
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
-        let sessionIdCapture = '';
-
         async function setup() {
-            const result = await createGameSession();
-            if (!result.ok) {
-                setErrorMsg(result.error);
-                setPhase('error');
+            const tokenResult = await getTeacherToken();
+            if (!tokenResult.token) {
+                setErrorMsg('Not logged in. Please sign in as a teacher.');
+                setPagePhase('error');
                 return;
             }
 
-            setJoinCode(result.join_code);
-            setSessionId(result.session_id);
-            sessionIdCapture = result.session_id;
-            setPhase('waiting');
-
-            // get the teacher's supabase token to authenticate the socket
-            const tokenResult = await getTeacherToken();
-            if (!tokenResult.token) return;
-
-            const socket = io('http://localhost:8000', {
+            const baseUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8000';
+            const socket = io(`${baseUrl}/party`, {
                 path: '/socket.io',
                 auth: { token: tokenResult.token },
             });
@@ -64,30 +69,55 @@ export default function LobbyPage() {
             socketRef.current = socket;
 
             socket.on('connect', () => {
-                socket.emit('join_lobby', { session_id: sessionIdCapture });
+                socket.emit('create_lobby', { name: 'Host' });
             });
 
-            socket.on('lobby_update', (payload: { players: Player[] }) => {
-                setPlayers(payload.players);
+            socket.on('lobby_update', (data: LobbyState) => {
+                setLobby(data);
+                setPagePhase('waiting');
+            });
+
+            socket.on('game_update', (data: LobbyState) => {
+                setLobby(data);
+                setPagePhase('in_game');
+            });
+
+            socket.on('error_message', (payload: { message: string }) => {
+                setErrorMsg(payload.message);
+            });
+
+            socket.on('connect_error', () => {
+                setErrorMsg('Could not connect to game server.');
+                setPagePhase('error');
             });
         }
 
         setup();
-
-
 
         return () => {
             socketRef.current?.disconnect();
         };
     }, []);
 
-    if (phase === 'creating') {
+    const handleStartGame = () => {
+        if (!lobby || lobby.players.length === 0) return;
+        socketRef.current?.emit('start_game', { code: lobby.code, rounds, timer_seconds: timerSeconds });
+    };
+
+    const handleNextRound = () => {
+        if (!lobby) return;
+        socketRef.current?.emit('next_round', { code: lobby.code });
+    };
+
+    const students = lobby?.players ?? [];
+    const timeLeftMs = lobby?.phaseEndsAt ? Math.max(lobby.phaseEndsAt - now, 0) : null;
+    const timeLeft = timeLeftMs !== null ? Math.ceil(timeLeftMs / 1000) : null;
+
+    if (pagePhase === 'connecting') {
         return (
             <div className={styles.page}>
                 <header className={styles.nav}>
                     <div className={styles.brand}>
-                        <p className={styles.brandTag}>Host: <UserName /></p>
-
                         <span className={styles.brandMark} />
                         <div>
                             <p className={styles.brandTitle}>Card Clash</p>
@@ -97,14 +127,14 @@ export default function LobbyPage() {
                 </header>
                 <main className={styles.main}>
                     <section className={styles.card}>
-                        <p className={styles.loadingText}>Creating session...</p>
+                        <p className={styles.loadingText}>Connecting...</p>
                     </section>
                 </main>
             </div>
         );
     }
 
-    if (phase === 'error') {
+    if (pagePhase === 'error') {
         return (
             <div className={styles.page}>
                 <header className={styles.nav}>
@@ -128,7 +158,95 @@ export default function LobbyPage() {
         );
     }
 
-    // phase === 'waiting'
+    if (pagePhase === 'waiting') {
+        return (
+            <div className={styles.page}>
+                <header className={styles.nav}>
+                    <div className={styles.brand}>
+                        <span className={styles.brandMark} />
+                        <div>
+                            <p className={styles.brandTitle}>Card Clash</p>
+                            <p className={styles.brandTag}>Host: <UserName /></p>
+                        </div>
+                    </div>
+                    <Link className={styles.secondaryBtn} href="/teacher_home">Cancel</Link>
+                </header>
+
+                <main className={styles.main}>
+                    <section className={styles.hero}>
+                        <div className={styles.card}>
+                            <h2>Join code</h2>
+                            <p className={styles.joinCode}>{lobby?.code}</p>
+                            <p className={styles.joinHint}>
+                                Students go to <strong>Card Clash</strong> and enter this code to join.
+                            </p>
+                        </div>
+
+                        <div className={styles.card}>
+                            <h2>Players in lobby ({students.length})</h2>
+                            {students.length === 0 ? (
+                                <p className={styles.waitingMsg}>Waiting for students to join...</p>
+                            ) : (
+                                <ul className={styles.playerList}>
+                                    {students.map((p) => (
+                                        <li key={p.id}>{p.name}</li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    </section>
+
+                    <section className={styles.grid}>
+                        <div className={styles.panel}>
+                            <h3>Game Settings</h3>
+                            <label className={styles.settingRow}>
+                                <span>Rounds: <strong>{rounds}</strong></span>
+                                <input
+                                    type="range"
+                                    min={1}
+                                    max={20}
+                                    value={rounds}
+                                    onChange={(e) => setRounds(Number(e.target.value))}
+                                    className={styles.slider}
+                                />
+                            </label>
+                            <label className={styles.settingRow}>
+                                <span>Timer: <strong>{timerSeconds}s</strong> per phase</span>
+                                <input
+                                    type="range"
+                                    min={10}
+                                    max={60}
+                                    step={5}
+                                    value={timerSeconds}
+                                    onChange={(e) => setTimerSeconds(Number(e.target.value))}
+                                    className={styles.slider}
+                                />
+                            </label>
+                        </div>
+                        <div className={styles.panel}>
+                            <h3>Controls</h3>
+                            <button
+                                className={styles.primaryBtn}
+                                type="button"
+                                disabled={students.length === 0}
+                                onClick={handleStartGame}
+                            >
+                                Start game
+                            </button>
+                            {students.length === 0 && (
+                                <p className={styles.startHint}>Start will be enabled once players join.</p>
+                            )}
+                        </div>
+                    </section>
+                </main>
+            </div>
+        );
+    }
+
+    // pagePhase === 'in_game'
+    const answered = lobby?.players.filter(p => p.answered).length ?? 0;
+    const total = lobby?.players.length ?? 0;
+
     return (
         <div className={styles.page}>
             <header className={styles.nav}>
@@ -136,51 +254,43 @@ export default function LobbyPage() {
                     <span className={styles.brandMark} />
                     <div>
                         <p className={styles.brandTitle}>Card Clash</p>
-                        <p className={styles.brandTag}>Waiting for players to join</p>
+                        <p className={styles.brandTag}>Round {lobby?.round} of {lobby?.maxRounds} · {lobby?.phase}</p>
                     </div>
                 </div>
-                <Link className={styles.secondaryBtn} href="/teacher_home">Cancel</Link>
+                {timeLeft !== null && (
+                    <p className={styles.timer}>{timeLeft}s</p>
+                )}
             </header>
 
             <main className={styles.main}>
-                <section className={styles.hero}>
-                    <div className={styles.card}>
-                        <h2>Join code</h2>
-                        <p className={styles.joinCode}>{joinCode}</p>
-                        <p className={styles.joinHint}>
-                            Students go to <strong>Card Clash</strong> and enter this code to join.
-                        </p>
-                    </div>
-
-                    <div className={styles.card}>
-                        <h2>Players in lobby ({players.length})</h2>
-                        {players.length === 0 ? (
-                            <p className={styles.waitingMsg}>Waiting for students to join...</p>
-                        ) : (
-                            <ul className={styles.playerList}>
-                                {players.map((p) => (
-                                    <li key={p.player_id}>{p.name}</li>
-                                ))}
-                            </ul>
-                        )}
-                    </div>
-                </section>
-
                 <section className={styles.grid}>
                     <div className={styles.panel}>
-                        <h3>Game Settings</h3>
-                        <p>Mode: Individual</p>
-                        <p>Rounds: 10</p>
-                        <p>Time per question: 30s</p>
+                        <h3>Players — {answered} / {total} answered</h3>
+                        <ul className={styles.playerList}>
+                            {lobby?.players.map((p) => (
+                                <li key={p.id}>
+                                    {p.answered ? '✓' : '·'} {p.name}
+                                    {p.wantsSwap && ' (swap)'}
+                                    {p.wantsLock && ' (lock)'}
+                                </li>
+                            ))}
+                        </ul>
                     </div>
+
                     <div className={styles.panel}>
                         <h3>Controls</h3>
-                        <button className={styles.primaryBtn} type="button" disabled={players.length === 0} onClick={handleStartGame}>
-                            Start game
+                        <button
+                            className={styles.primaryBtn}
+                            type="button"
+                            disabled={lobby?.phase !== 'results' || lobby?.status === 'game_over'}
+                            onClick={handleNextRound}
+                        >
+                            Next round
                         </button>
-                        {players.length === 0 && (
-                            <p className={styles.startHint}>Start will be enabled once players join.</p>
-                        )}
+                        {lobby?.status === 'game_over'
+                            ? <p className={styles.startHint}>Game over.</p>
+                            : lobby?.phase !== 'results' && <p className={styles.startHint}>Available after results phase.</p>
+                        }
                     </div>
                 </section>
             </main>
