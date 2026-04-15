@@ -1,6 +1,7 @@
 import styles from "./questions.module.css";
 import { redirect } from 'next/navigation';
 import { createQuestionCard } from './actions';
+import { removeQuestionCard } from './actions';
 import { createClient } from "@/lib/supabase/server";
 import { fetchCategoriesForStudySession } from "../student_study_session/actions";
 {/*This uses the old question creation system and does not use the new deck system. It will need to be changed once it is implemented*/}
@@ -19,6 +20,8 @@ export async function findQuestions(category : string){
 
   return questions;
 }
+
+
 
 
 
@@ -60,6 +63,7 @@ export default async function QuestionsPage({
       
       <main className={styles.main}>
         {/*where the category search function is*/}
+        <section>
          <form action={handleSearch} className={styles.searchForm}> 
           <section className={styles.formCard}>
             <p>Search through existing categories.</p>
@@ -78,10 +82,13 @@ export default async function QuestionsPage({
               <p>Available categories: {categories.join(", ")}</p>
             </div>
           )}
+          
         </section>
+        </form>
+        <form action = {removeQuestionCard}>
             {/*all the questions baby*/}
             <section className={styles.formCard}>
-              <h2>Existing test1 questions</h2>
+              <h2>Existing questions:</h2>
               <div className={styles.scrollContainer}>
                 
                 {!questions?.length && (
@@ -103,11 +110,19 @@ export default async function QuestionsPage({
                           </li>
                         ))}
                     </ul>
+                    <input type="hidden" name="question" value={q.question} />
+  
+                  <button type="submit" className={styles.primaryBtn}>
+                      Delete
+                  </button>
                   </article>
+
                 ))}
               </div>
             </section>
-        </form>
+            </form>
+            </section>
+        
           <form action={createQuestionCard}>
 
         <section className={styles.formCard}>
