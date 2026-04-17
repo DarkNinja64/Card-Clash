@@ -109,6 +109,14 @@ def _resolve_swap_lock(lobby: dict) -> None:
     for swapper in swappers:
         candidates = [p for p in eligible if p['id'] != swapper['id'] and p['id'] not in used]
         if not candidates:
+            # No eligible partner (everyone locked) — pull a random question from the pool instead
+            pool = lobby.get('questionPool') or _DEFAULT_QUESTION_POOL
+            current_id = str(swapper['question']['id']) if swapper.get('question') else None
+            alternates = [q for q in pool if str(q['id']) != current_id]
+            if alternates:
+                swapper['question'] = random.choice(alternates)
+                swapper['swapUsed'] = True
+                swapper['swappedThisRound'] = True
             continue
         target = random.choice(candidates)
         used.add(target['id'])
