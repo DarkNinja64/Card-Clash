@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
 import { createClient } from '@/lib/supabase/client';
@@ -19,6 +20,7 @@ type LobbyState = {
 };
 
 export default function StudentLobbyPage() {
+  const router = useRouter();
   const [socket, setSocket] = useState<ReturnType<typeof getSocket> | null>(null);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
@@ -43,8 +45,9 @@ export default function StudentLobbyPage() {
     const handleLobby = (data: LobbyState) => {
       setLobby(data);
       setError(null);
-      // persist the lobby code so /party can request state on mount
       if (data.code) localStorage.setItem('cc_lobby_code', data.code);
+      // auto-navigate when host starts the game
+      if (data.status === 'in_game') router.push('/party');
     };
     const handleError = (payload: { message: string }) => setError(payload.message);
 
@@ -113,11 +116,6 @@ export default function StudentLobbyPage() {
             <button className={styles.primaryBtn} type="button" onClick={joinLobby}>
               Join lobby
             </button>
-            {lobby?.status === 'in_game' ? (
-              <Link className={styles.secondaryBtn} href="/party">
-                Go to game
-              </Link>
-            ) : null}
           </div>
         </section>
 
