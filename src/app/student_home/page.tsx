@@ -17,9 +17,6 @@ export default function PostLoginHome() {
           </div>
         </div>
         <div className={styles.navActions}>
-          <Link className={styles.secondaryBtn} href="/questions">
-            Create questions
-          </Link>
           <button className={styles.primaryBtn} onClick={() => logOut()}>
                 Log out
           </button>
@@ -34,7 +31,7 @@ export default function PostLoginHome() {
               Join a game or study a question set to prep for the next one
             </p>
             <div className={styles.heroActions}>
-              <a className={styles.primaryBtn} href="/game">
+              <a className={styles.primaryBtn} href="/student_lobby">
                 Join a match
               </a>
               <a className={styles.secondaryBtn} href="/student_study_session">

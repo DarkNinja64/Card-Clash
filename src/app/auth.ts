@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 
 // Student sign in with username validity
@@ -12,12 +13,12 @@ export async function studentLogIn(username: string, email: string, password: st
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('username, role')
+    .select('displayname, role')
     .eq('id', data.user.id)
     .single();
 
     if (profileError || !profile) return { error: 'No account matching this info was found.'};
-    if (profile.username !== username) {
+    if (profile.displayname !== username) {
       await supabase.auth.signOut();
       return { error: 'Username does not match account.'};
     }
@@ -36,12 +37,15 @@ export async function studentSignUp(username: string, email: string, password: s
 
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) return { error: error.message };
+  if (!data.user) return { error: 'Sign up failed — no user returned.' };
 
-  const {error: profileError }= await supabase
+  // Use admin client so RLS on the profiles table never blocks the insert
+  const admin = createAdminClient();
+  const { error: profileError } = await admin
     .from('profiles')
-    .insert({id: data.user?.id, username, role: 'student' });
+    .insert({ id: data.user.id, displayname: username, role: 'student' });
 
-    if (profileError) return { error: profileError.message};
+  if (profileError) return { error: profileError.message };
 
   return { message: 'Account created successfully! Login to start.' };
 }
@@ -77,12 +81,15 @@ export async function teacherSignUp(email: string, password: string) {
 
   const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) return { error: error.message };
+  if (!data.user) return { error: 'Sign up failed — no user returned.' };
 
-  const { error: profileError } = await supabase
+  // Use admin client so RLS on the profiles table never blocks the insert
+  const admin = createAdminClient();
+  const { error: profileError } = await admin
     .from('profiles')
-    .insert({ id: data.user?.id, role: 'teacher'});
+    .insert({ id: data.user.id, role: 'teacher' });
 
-    if (profileError) return { error: profileError.message};
+  if (profileError) return { error: profileError.message };
 
   return { message: 'Account created successfully! Login to start.' };
 }

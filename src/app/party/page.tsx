@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getSocket } from '@/lib/socket';
+import { getSocket, disconnectSocket } from '@/lib/socket';
 import styles from './party.module.css';
 import UserName from "@/components/UserName";
-import {Socket} from "socket.io-client";
-import {createClient} from "@/lib/supabase/client";
+import { Socket } from "socket.io-client";
+import { createClient } from "@/lib/supabase/client";
 
 type Question = { id: string; category: string; question: string; answer: string };
 type Player = {
@@ -25,52 +26,71 @@ type Player = {
 type LobbyState = {
   code: string;
   hostId: string;
-  status: 'lobby' | 'in_game';
+  status: 'lobby' | 'in_game' | 'game_over';
   round: number;
+  maxRounds: number;
+  timerS: number;
   phase: string;
   phaseEndsAt: number | null;
   players: Player[];
 };
 
 export default function PartyPage() {
-    const [socket, setSocket] = useState<Socket | null>(null);
-    const [now, setNow] = useState<number>(Date.now());
-    const [lobby, setLobby] = useState<LobbyState | null>(null);
+  const router = useRouter();
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [now, setNow] = useState<number>(Date.now());
+  const [lobby, setLobby] = useState<LobbyState | null>(null);
 
-    useEffect(() => {
-        async function connect() {
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.access_token) return;
-            setSocket(getSocket(session.access_token));
-        }
-        connect();
-    }, []);
+  useEffect(() => {
+    async function connect() {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) return;
+      const s = getSocket(session.access_token);
+      setSocket(s);
+
+      // once connected, request current lobby state using the stored code
+      const requestState = () => {
+        const code = localStorage.getItem('cc_lobby_code');
+        if (code) s.emit('get_lobby_state', { code });
+      };
+
+      if (s.connected) {
+        requestState();
+      } else {
+        s.once('connect', requestState);
+      }
+    }
+    connect();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(interval);
   }, []);
 
-    useEffect(() => {
-        if (!socket) return;
+  useEffect(() => {
+    if (!socket) return;
 
-        socket.on('lobby_update', (data) => {
-            setLobby(data);
-        });
+    const handleUpdate = (data: LobbyState) => {
+      setLobby(data);
+      // clear stored code when the game ends so stale state doesn't persist across tabs
+      if (data.phase === 'game_over' || data.status === 'game_over') {
+        localStorage.removeItem('cc_lobby_code');
+      }
+    };
 
-        socket.on('game_update', (data) => {
-            setLobby(data);
-        });
+    socket.on('lobby_update', handleUpdate);
+    socket.on('game_update', handleUpdate);
 
-        return () => {
-            socket.off('lobby_update');
-            socket.off('game_update');
-        };
-    }, [socket]);
+    return () => {
+      socket.off('lobby_update', handleUpdate);
+      socket.off('game_update', handleUpdate);
+    };
+  }, [socket]);
 
   const submitAnswer = (correct: boolean) => {
-    if (!lobby?.code || !socket) return;
+    if (!lobby?.code || !socket || lobby.phase !== 'answer') return;
     socket.emit('submit_answer', { code: lobby.code, correct });
   };
 
@@ -84,15 +104,49 @@ export default function PartyPage() {
     socket.emit('request_lock', { code: lobby.code });
   };
 
-  const nextRound = () => {
-    if (!lobby?.code || !socket) return;
-    socket.emit('next_round', { code: lobby.code });
+  const handleLeaveGame = () => {
+    localStorage.removeItem('cc_lobby_code');
+    disconnectSocket();
+    router.push('/student_home');
   };
 
-  const isHost = socket && lobby?.hostId === socket.id;
   const me = socket && lobby?.players.find((p) => p.id === socket.id) || null;
   const timeLeftMs = lobby?.phaseEndsAt ? Math.max(lobby.phaseEndsAt - now, 0) : null;
   const timeLeft = timeLeftMs ? Math.ceil(timeLeftMs / 1000) : null;
+
+  if (lobby?.phase === 'game_over') {
+    const sorted = [...lobby.players].sort((a, b) => b.score - a.score);
+    return (
+      <div className={styles.page}>
+        <header className={styles.nav}>
+          <div className={styles.brand}>
+            <span className={styles.brandMark} />
+            <div>
+              <p className={styles.brandTag}><UserName /></p>
+              <p className={styles.brandTitle}>Card Clash</p>
+              <p className={styles.brandTag}>Game over</p>
+            </div>
+          </div>
+        </header>
+        <main className={styles.main}>
+          <section className={styles.panel}>
+            <h2>Final Standings</h2>
+            <div className={styles.playerGrid}>
+              {sorted.map((p, i) => (
+                <div key={p.id} className={styles.playerCard}>
+                  <strong>#{i + 1} {p.name}</strong>
+                  <span className={styles.badge}>{p.score} pts</span>
+                </div>
+              ))}
+            </div>
+            <button className={styles.primaryBtn} type="button" onClick={handleLeaveGame}>
+              Back to home
+            </button>
+          </section>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.page}>
@@ -100,13 +154,15 @@ export default function PartyPage() {
         <div className={styles.brand}>
           <span className={styles.brandMark} />
           <div>
-              <p className={styles.brandTag}><UserName /></p>
+            <p className={styles.brandTag}><UserName /></p>
             <p className={styles.brandTitle}>Card Clash</p>
             <p className={styles.brandTag}>Party mode</p>
           </div>
         </div>
         <div className={styles.navActions}>
-          <Link className={styles.secondaryBtn} href="/lobby">Back to Lobby</Link>
+          <button className={styles.secondaryBtn} type="button" onClick={handleLeaveGame}>
+            Leave game
+          </button>
         </div>
       </header>
 
@@ -114,7 +170,7 @@ export default function PartyPage() {
         <section className={styles.panel}>
           <h1>Live Round</h1>
           {!lobby ? (
-            <p className={styles.subtle}>Join a lobby to see the game state.</p>
+            <p className={styles.subtle}>Connecting to game...</p>
           ) : (
             <div className={styles.roundInfo}>
               <div>
@@ -123,7 +179,7 @@ export default function PartyPage() {
               </div>
               <div>
                 <p className={styles.subtle}>Round</p>
-                <p className={styles.round}>{lobby.round || 1}</p>
+                <p className={styles.round}>{lobby.round || 1} / {lobby.maxRounds}</p>
               </div>
               <div>
                 <p className={styles.subtle}>Phase</p>
@@ -143,7 +199,10 @@ export default function PartyPage() {
             <div className={styles.card}>
               <p className={styles.subtle}>{me.question.category}</p>
               <p className={styles.question}>{me.question.question}</p>
-              <p className={styles.answer}>Answer: {me.question.answer}</p>
+              {/* Only reveal the answer during the answer phase */}
+              {lobby?.phase === 'answer' && (
+                <p className={styles.answer}>Answer: {me.question.answer}</p>
+              )}
             </div>
           ) : (
             <p className={styles.subtle}>No question assigned yet.</p>
@@ -152,7 +211,7 @@ export default function PartyPage() {
 
         <section className={styles.panel}>
           <h2>Round actions</h2>
-          <p className={styles.subtle}>Analyze phase is for swap/lock. Answer phase submits.</p>
+          <p className={styles.subtle}>Analyze: request swap or lock. Answer: submit your result.</p>
           <div className={styles.actions}>
             <button
               className={styles.secondaryBtn}
@@ -170,17 +229,22 @@ export default function PartyPage() {
             >
               Request lock {me?.lockUsed ? '(used)' : ''}
             </button>
-            <button className={styles.primaryBtn} type="button" onClick={() => submitAnswer(true)}>
+            <button
+              className={styles.primaryBtn}
+              type="button"
+              onClick={() => submitAnswer(true)}
+              disabled={!lobby || lobby.phase !== 'answer' || me?.answered}
+            >
               Submit correct
             </button>
-            <button className={styles.secondaryBtn} type="button" onClick={() => submitAnswer(false)}>
+            <button
+              className={styles.secondaryBtn}
+              type="button"
+              onClick={() => submitAnswer(false)}
+              disabled={!lobby || lobby.phase !== 'answer' || me?.answered}
+            >
               Submit incorrect
             </button>
-            {isHost ? (
-              <button className={styles.ghostBtn} type="button" onClick={nextRound}>
-                Next round
-              </button>
-            ) : null}
           </div>
         </section>
 
@@ -194,9 +258,6 @@ export default function PartyPage() {
                 <div key={player.id} className={styles.playerCard}>
                   <strong>{player.name}</strong>
                   <span className={styles.badge}>Score: {player.score}</span>
-                  {player.id === lobby.hostId ? (
-                    <span className={styles.hostBadge}>Host</span>
-                  ) : null}
                 </div>
               ))}
             </div>

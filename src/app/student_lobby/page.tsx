@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getSocket } from '@/lib/socket';
+import { createClient } from '@/lib/supabase/client';
 import styles from './student_lobby.module.css';
 import UserName from "@/components/UserName";
 
@@ -18,7 +19,7 @@ type LobbyState = {
 };
 
 export default function StudentLobbyPage() {
-  const socket = useMemo(() => getSocket(), []);
+  const [socket, setSocket] = useState<ReturnType<typeof getSocket> | null>(null);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [lobby, setLobby] = useState<LobbyState | null>(null);
@@ -26,11 +27,24 @@ export default function StudentLobbyPage() {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.access_token) {
+        setSocket(getSocket(session.access_token));
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return;
+
     const handleConnect = () => setConnected(true);
     const handleDisconnect = () => setConnected(false);
     const handleLobby = (data: LobbyState) => {
       setLobby(data);
       setError(null);
+      // persist the lobby code so /party can request state on mount
+      if (data.code) localStorage.setItem('cc_lobby_code', data.code);
     };
     const handleError = (payload: { message: string }) => setError(payload.message);
 
@@ -50,7 +64,7 @@ export default function StudentLobbyPage() {
   }, [socket]);
 
   const joinLobby = () => {
-    if (!code.trim()) return;
+    if (!socket || !code.trim()) return;
     socket.emit('join_lobby', { code: code.trim().toUpperCase(), name: name.trim() || 'Player' });
   };
 
