@@ -43,6 +43,8 @@ export default function StudentLobbyPage() {
     const handleLobby = (data: LobbyState) => {
       setLobby(data);
       setError(null);
+      // persist the lobby code so /party can request state on mount
+      if (data.code) localStorage.setItem('cc_lobby_code', data.code);
     };
     const handleError = (payload: { message: string }) => setError(payload.message);
 

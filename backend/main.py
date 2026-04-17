@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from database import create_tables
+from services.auth_service import warm_jwks_cache, refresh_jwks_cache
 from socket_events.party import PartyNamespace
 
 # socket.io server — has to be created before the fastapi app so we can
@@ -27,18 +28,28 @@ app.add_middleware(
 )
 
 
-
 @app.on_event("startup")
 async def startup():
-    # runs once when the server boots — makes sure all db tables exist before requests come in
+    # ensure db tables exist (no-op if they're already there)
     await create_tables()
-    print("[server] Tables ready")
+    # pre-fetch Supabase public keys so socket auth never blocks on an HTTP call
+    await warm_jwks_cache()
+    print("[server] Ready")
 
 
 @app.get("/health")
 async def health():
-    # simple ping endpoint, useful for checking if the server is up
     return {"status": "ok"}
+
+
+@app.post("/auth/refresh-jwks")
+async def refresh_jwks():
+    """Force a JWKS cache refresh if Supabase rotated its signing keys.
+
+    Call this if socket connections start failing with 'kid not in cache' errors.
+    """
+    await refresh_jwks_cache()
+    return {"status": "ok", "message": "JWKS cache refreshed"}
 
 
 # combined_app wraps both fastapi and socket.io into one ASGI app on port 8000

@@ -17,9 +17,6 @@ export default function PostLoginHome() {
           </div>
         </div>
         <div className={styles.navActions}>
-          <Link className={styles.secondaryBtn} href="/questions">
-            Create questions
-          </Link>
           <button className={styles.primaryBtn} onClick={() => logOut()}>
                 Log out
           </button>

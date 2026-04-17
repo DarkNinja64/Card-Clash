@@ -88,11 +88,11 @@ export default function QuestionsPage() {
                                   type="text"
                               />
                               <label className={styles.checkLabel}>
-                                  <input type="checkbox"
+                                  <input type="radio"
                                          name="correct_answer_option"
                                          value={index + 1}
+                                         required
                                   /> Correct
-
                               </label>
                           </div>
                       ))}

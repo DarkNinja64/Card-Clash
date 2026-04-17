@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
 import styles from './lobby.module.css';
-import { getTeacherToken } from './actions';
+import { getTeacherToken, fetchCategories } from './actions';
 import UserName from "@/components/UserName";
 
 type Question = { id: string; category: string; question: string; answer: string };
@@ -36,12 +37,15 @@ type LobbyState = {
 type PagePhase = 'connecting' | 'waiting' | 'in_game' | 'error';
 
 export default function LobbyPage() {
+    const router = useRouter();
     const [pagePhase, setPagePhase] = useState<PagePhase>('connecting');
     const [lobby, setLobby] = useState<LobbyState | null>(null);
     const [errorMsg, setErrorMsg] = useState('');
     const [now, setNow] = useState(Date.now());
     const [rounds, setRounds] = useState(5);
     const [timerSeconds, setTimerSeconds] = useState(20);
+    const [categories, setCategories] = useState<string[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState<string>('');
 
     const socketRef = useRef<Socket | null>(null);
 
@@ -49,6 +53,11 @@ export default function LobbyPage() {
     useEffect(() => {
         const interval = setInterval(() => setNow(Date.now()), 500);
         return () => clearInterval(interval);
+    }, []);
+
+    // load available question categories
+    useEffect(() => {
+        fetchCategories().then(setCategories);
     }, []);
 
     useEffect(() => {
@@ -79,7 +88,11 @@ export default function LobbyPage() {
 
             socket.on('game_update', (data: LobbyState) => {
                 setLobby(data);
-                setPagePhase('in_game');
+                if (data.status === 'game_over') {
+                    setPagePhase('in_game'); // stay on page to show game over state
+                } else {
+                    setPagePhase('in_game');
+                }
             });
 
             socket.on('error_message', (payload: { message: string }) => {
@@ -101,12 +114,29 @@ export default function LobbyPage() {
 
     const handleStartGame = () => {
         if (!lobby || lobby.players.length === 0) return;
-        socketRef.current?.emit('start_game', { code: lobby.code, rounds, timer_seconds: timerSeconds });
+        socketRef.current?.emit('start_game', {
+            code: lobby.code,
+            rounds,
+            timer_seconds: timerSeconds,
+            category: selectedCategory || null,
+        });
     };
 
     const handleNextRound = () => {
         if (!lobby) return;
         socketRef.current?.emit('next_round', { code: lobby.code });
+    };
+
+    const handleEndGame = () => {
+        if (!lobby) return;
+        socketRef.current?.emit('end_game', { code: lobby.code });
+        socketRef.current?.disconnect();
+        router.push('/teacher_home');
+    };
+
+    const handleLeave = () => {
+        socketRef.current?.disconnect();
+        router.push('/teacher_home');
     };
 
     const students = lobby?.players ?? [];
@@ -169,7 +199,9 @@ export default function LobbyPage() {
                             <p className={styles.brandTag}>Host: <UserName /></p>
                         </div>
                     </div>
-                    <Link className={styles.secondaryBtn} href="/teacher_home">Cancel</Link>
+                    <button className={styles.secondaryBtn} type="button" onClick={handleLeave}>
+                        Cancel
+                    </button>
                 </header>
 
                 <main className={styles.main}>
@@ -199,6 +231,19 @@ export default function LobbyPage() {
                     <section className={styles.grid}>
                         <div className={styles.panel}>
                             <h3>Game Settings</h3>
+                            <label className={styles.settingRow}>
+                                <span>Question category</span>
+                                <select
+                                    className={styles.select}
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                >
+                                    <option value="">All categories</option>
+                                    {categories.map((cat) => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+                            </label>
                             <label className={styles.settingRow}>
                                 <span>Rounds: <strong>{rounds}</strong></span>
                                 <input
@@ -246,6 +291,7 @@ export default function LobbyPage() {
     // pagePhase === 'in_game'
     const answered = lobby?.players.filter(p => p.answered).length ?? 0;
     const total = lobby?.players.length ?? 0;
+    const isGameOver = lobby?.status === 'game_over';
 
     return (
         <div className={styles.page}>
@@ -254,12 +300,19 @@ export default function LobbyPage() {
                     <span className={styles.brandMark} />
                     <div>
                         <p className={styles.brandTitle}>Card Clash</p>
-                        <p className={styles.brandTag}>Round {lobby?.round} of {lobby?.maxRounds} · {lobby?.phase}</p>
+                        <p className={styles.brandTag}>
+                            {isGameOver ? 'Game over' : `Round ${lobby?.round} of ${lobby?.maxRounds} · ${lobby?.phase}`}
+                        </p>
                     </div>
                 </div>
-                {timeLeft !== null && (
-                    <p className={styles.timer}>{timeLeft}s</p>
-                )}
+                <div className={styles.navActions}>
+                    {timeLeft !== null && !isGameOver && (
+                        <p className={styles.timer}>{timeLeft}s</p>
+                    )}
+                    <button className={styles.secondaryBtn} type="button" onClick={handleEndGame}>
+                        End game
+                    </button>
+                </div>
             </header>
 
             <main className={styles.main}>
@@ -279,18 +332,25 @@ export default function LobbyPage() {
 
                     <div className={styles.panel}>
                         <h3>Controls</h3>
-                        <button
-                            className={styles.primaryBtn}
-                            type="button"
-                            disabled={lobby?.phase !== 'results' || lobby?.status === 'game_over'}
-                            onClick={handleNextRound}
-                        >
-                            Next round
-                        </button>
-                        {lobby?.status === 'game_over'
-                            ? <p className={styles.startHint}>Game over.</p>
-                            : lobby?.phase !== 'results' && <p className={styles.startHint}>Available after results phase.</p>
-                        }
+                        {isGameOver ? (
+                            <button className={styles.primaryBtn} type="button" onClick={handleLeave}>
+                                Back to home
+                            </button>
+                        ) : (
+                            <>
+                                <button
+                                    className={styles.primaryBtn}
+                                    type="button"
+                                    disabled={lobby?.phase !== 'results'}
+                                    onClick={handleNextRound}
+                                >
+                                    Next round
+                                </button>
+                                {lobby?.phase !== 'results' && (
+                                    <p className={styles.startHint}>Available after results phase.</p>
+                                )}
+                            </>
+                        )}
                     </div>
                 </section>
             </main>

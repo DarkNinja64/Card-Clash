@@ -42,9 +42,10 @@ def _shuffle(lst: list) -> list:
     return lst
 
 
-def _create_player(sid: str, name: str) -> dict:
+def _create_player(sid: str, name: str, user_id: str = '') -> dict:
     return {
         'id': sid,
+        'user_id': user_id,   # Supabase user UUID — used for reconnect matching
         'name': name or 'Player',
         'score': 0,
         'question': None,
@@ -57,6 +58,11 @@ def _create_player(sid: str, name: str) -> dict:
     }
 
 
+def _serialize_player(p: dict) -> dict:
+    # strip server-only fields before sending to clients
+    return {k: v for k, v in p.items() if k != 'user_id'}
+
+
 def _serialize(lobby: dict) -> dict:
     return {
         'code': lobby['code'],
@@ -67,7 +73,7 @@ def _serialize(lobby: dict) -> dict:
         'timerS': lobby.get('timer_s', 20),
         'phase': lobby['phase'],
         'phaseEndsAt': lobby['phaseEndsAt'],
-        'players': list(lobby['players'].values()),
+        'players': [_serialize_player(p) for p in lobby['players'].values()],
     }
 
 
@@ -111,11 +117,14 @@ def _resolve_swap_lock(lobby: dict) -> None:
         swapper['swappedThisRound'] = True
 
 
-async def _fetch_questions() -> list | None:
+async def _fetch_questions(category: str | None = None) -> list | None:
     key = settings.supabase_service_role_key or settings.supabase_anon_key
     if not key or not settings.supabase_url:
         return None
     try:
+        params: dict = {'select': '*', 'limit': '100'}
+        if category:
+            params['category'] = f'eq.{category}'
         async with httpx.AsyncClient() as client:
             resp = await client.get(
                 f"{settings.supabase_url}/rest/v1/question_card",
@@ -123,7 +132,7 @@ async def _fetch_questions() -> list | None:
                     'apikey': key,
                     'Authorization': f'Bearer {key}',
                 },
-                params={'select': '*', 'limit': '20'},
+                params=params,
                 timeout=10,
             )
             resp.raise_for_status()
@@ -151,15 +160,20 @@ class PartyNamespace(socketio.AsyncNamespace):
         payload = decode_supabase_token(token)
         if not payload:
             return False  # reject — no valid Supabase JWT
+        # store user_id so we can re-match this player if they reconnect with a new sid
+        await self.save_session(sid, {'user_id': payload.get('sub', '')})
         print(f"[party] connect sid={sid} user={payload.get('sub')}")
 
     async def on_disconnect(self, sid):
         for lobby in list(_lobbies.values()):
             if lobby['hostId'] == sid:
-                # host left — cancel game and clean up
+                # host left — cancel game and notify players
                 task = lobby.get('phaseTask')
                 if task:
                     task.cancel()
+                lobby['status'] = 'game_over'
+                lobby['phase'] = 'game_over'
+                await self._broadcast_game(lobby)
                 _lobbies.pop(lobby['code'], None)
                 return
             if sid not in lobby['players']:
@@ -188,9 +202,10 @@ class PartyNamespace(socketio.AsyncNamespace):
             'timer_s': 20,
             'phase': 'waiting',
             'phaseEndsAt': None,
-            'players': {},  # host is not a player — students join via join_lobby
+            'players': {},
             'phaseTask': None,
             'questionPool': None,
+            'category': None,
         }
         await self.enter_room(sid, code)
         await self._broadcast_lobby(_lobbies[code])
@@ -202,9 +217,44 @@ class PartyNamespace(socketio.AsyncNamespace):
         if not lobby:
             await self.emit('error_message', {'message': 'Lobby not found.'}, to=sid)
             return
-        lobby['players'][sid] = _create_player(sid, name)
+        if lobby['status'] != 'lobby':
+            await self.emit('error_message', {'message': 'Game already in progress.'}, to=sid)
+            return
+        session = await self.get_session(sid)
+        user_id = session.get('user_id', '')
+        lobby['players'][sid] = _create_player(sid, name, user_id)
         await self.enter_room(sid, code)
         await self._broadcast_lobby(lobby)
+
+    async def on_get_lobby_state(self, sid, data):
+        """Client calls this on mount to get current state — handles page refresh and new tabs."""
+        code = (data or {}).get('code', '').upper()
+        lobby = _lobbies.get(code)
+        if not lobby:
+            await self.emit('error_message', {'message': 'Lobby not found.'}, to=sid)
+            return
+
+        # already in the lobby as host or player — just resend state
+        if lobby['hostId'] == sid or sid in lobby['players']:
+            await self.enter_room(sid, code)
+            await self.emit('game_update', _serialize(lobby), to=sid)
+            return
+
+        # reconnect case: same user, new socket id — re-register the player
+        session = await self.get_session(sid)
+        user_id = session.get('user_id', '')
+        if user_id:
+            for old_sid, player in list(lobby['players'].items()):
+                if player.get('user_id') == user_id:
+                    del lobby['players'][old_sid]
+                    player['id'] = sid
+                    lobby['players'][sid] = player
+                    await self.enter_room(sid, code)
+                    await self.emit('game_update', _serialize(lobby), to=sid)
+                    print(f"[party] reconnected user={user_id} old_sid={old_sid} new_sid={sid}")
+                    return
+
+        await self.emit('error_message', {'message': 'You are not in this lobby.'}, to=sid)
 
     async def on_start_game(self, sid, data):
         code = (data or {}).get('code', '')
@@ -214,10 +264,28 @@ class PartyNamespace(socketio.AsyncNamespace):
             return
         lobby['maxRounds'] = max(1, min(20, int((data or {}).get('rounds', 5))))
         lobby['timer_s'] = max(10, min(60, int((data or {}).get('timer_seconds', 20))))
-        lobby['questionPool'] = await _fetch_questions()
+        category = (data or {}).get('category') or None
+        lobby['category'] = category
+        lobby['questionPool'] = await _fetch_questions(category)
+        if not lobby['questionPool']:
+            print(f"[party] No questions found for category={category!r}, using default pool")
         lobby['status'] = 'in_game'
         lobby['round'] = 1
         await self._start_round(lobby)
+
+    async def on_end_game(self, sid, data):
+        """Host explicitly ends the game early."""
+        code = (data or {}).get('code', '')
+        lobby = _lobbies.get(code)
+        if not lobby or lobby['hostId'] != sid:
+            return
+        task = lobby.get('phaseTask')
+        if task:
+            task.cancel()
+        lobby['status'] = 'game_over'
+        lobby['phase'] = 'game_over'
+        await self._broadcast_game(lobby)
+        _lobbies.pop(code, None)
 
     async def on_submit_answer(self, sid, data):
         code = (data or {}).get('code', '')

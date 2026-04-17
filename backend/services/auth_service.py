@@ -10,7 +10,6 @@ from config import settings
 # keyed by kid so we can look up the right public key without re-fetching on every request
 _jwks_cache: dict[str, dict] = {}
 
-# using bcrypt directly instead of passlib
 
 def hash_password(password: str) -> str:
     # gensalt() generates a new random salt every call so two identical passwords get different hashes
@@ -19,62 +18,90 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain: str, hashed: str) -> bool:
     # checkpw does a constant-time comparison to prevent timing attacks
-    # (an attacker can't tell if a password is "almost right" by measuring response time)
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 def create_access_token(data: dict) -> str:
     # used for student join tokens only — teachers get tokens from Supabase, not here
-    # copy the dict so we don't mutate whatever the caller passed in
     payload = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expire_minutes)
-    payload["exp"] = expire  # exp is the standard JWT expiry claim, jose validates this automatically
+    payload["exp"] = expire
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
 def decode_token(token: str) -> dict:
     # decodes backend-issued student tokens (signed with jwt_secret)
-    # returns {} on any failure — expired, bad signature, totally malformed, whatever
-    # callers just do `if not payload` rather than catching exceptions themselves
+    # returns {} on any failure so callers just do `if not payload`
     try:
         return jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
     except JWTError:
         return {}
 
 
-def _get_jwk(kid: str) -> dict | None:
-    # lazy-fetch the JWKS the first time we see an unknown kid, then cache every key from the response
-    # hitting the JWKS endpoint on every request would be slow and unnecessary since keys rarely rotate
-    if kid not in _jwks_cache:
-        try:
-            resp = httpx.get(f"{settings.supabase_url}/auth/v1/.well-known/jwks.json", timeout=10)
+async def warm_jwks_cache() -> None:
+    """Fetch Supabase public keys once at startup and cache them.
+
+    Supabase newer projects use ES256 (asymmetric). We pre-fetch the JWKS so
+    on_connect never has to make a blocking HTTP call while handling sockets.
+    Falls back gracefully — HS256 projects don't use the JWKS at all.
+    """
+    if not settings.supabase_url:
+        print("[auth] No SUPABASE_URL — skipping JWKS warm")
+        return
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                f"{settings.supabase_url}/auth/v1/.well-known/jwks.json",
+                timeout=10,
+            )
             resp.raise_for_status()
-            for key in resp.json().get("keys", []):
+            keys = resp.json().get("keys", [])
+            for key in keys:
                 _jwks_cache[key["kid"]] = key
-        except Exception as e:
-            print(f"[auth] Failed to fetch JWKS: {e}")
-    return _jwks_cache.get(kid)
+            print(f"[auth] JWKS cache warmed — {len(keys)} key(s): {list(_jwks_cache.keys())}")
+    except Exception as e:
+        print(f"[auth] JWKS warm failed (HS256 fallback will be used): {e}")
+
+
+async def refresh_jwks_cache() -> None:
+    """Force a JWKS re-fetch — call this if Supabase rotates its signing keys."""
+    _jwks_cache.clear()
+    await warm_jwks_cache()
 
 
 def decode_supabase_token(token: str) -> dict:
-    # decodes Supabase-issued teacher tokens — same return contract as decode_token (empty dict on failure)
-    # newer Supabase projects sign with ES256 using a rotating key pair, so we verify against the JWKS
-    # older projects use HS256 with a static secret — fall back to that so both setups work
+    """Decode and verify a Supabase-issued JWT.
+
+    Supports both ES256 (newer Supabase projects, key from JWKS cache) and
+    HS256 (older projects, key from SUPABASE_JWT_SECRET env var).
+    Returns {} on any failure — callers do `if not payload` to check.
+    """
+    if not token:
+        return {}
     try:
         header = jwt.get_unverified_header(token)
         alg = header.get("alg", "HS256")
 
         if alg == "ES256":
             kid = header.get("kid", "")
-            key = _get_jwk(kid)
+            key = _jwks_cache.get(kid)
             if not key:
-                print(f"[auth] No JWKS key found for kid={kid}")
+                # Key not in cache — could be a rotation. Log clearly so it's obvious.
+                print(f"[auth] ES256 kid={kid!r} not in JWKS cache. "
+                      f"Cached kids: {list(_jwks_cache.keys())}. "
+                      "Call /auth/refresh-jwks if Supabase rotated keys.")
                 return {}
             return jwt.decode(token, key, algorithms=["ES256"], audience="authenticated")
+
         else:
-            # supabase signs with the raw bytes of the secret, not the base64 string itself
+            # HS256 — older Supabase projects sign with the raw bytes of the secret.
+            # The dashboard shows it as base64; decode to bytes before verifying.
             secret = base64.b64decode(settings.supabase_jwt_secret)
             return jwt.decode(token, secret, algorithms=["HS256"], audience="authenticated")
+
     except JWTError as e:
         print(f"[auth] Supabase JWT decode failed: {e}")
+        return {}
+    except Exception as e:
+        print(f"[auth] Unexpected error decoding token: {e}")
         return {}
