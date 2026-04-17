@@ -1,7 +1,7 @@
 
 'use server';
 
-
+import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 /*
@@ -44,7 +44,25 @@ export async function createQuestionCard(formData: FormData) {
     if (error) {
         console.error('Supabase insert error:', error);
         throw new Error(error.message || 'Database error');
+    }else{
+        revalidatePath('/questions');
     }
 
     return data;
+}
+
+export async function removeQuestionCard(formData: FormData){
+    const supabase = createAdminClient();
+    const question = (formData.get('question') as string) || '';
+    const { error } = await supabase
+        .from('question_card')
+        .delete()
+        .eq('question', question);
+    if (error) {
+         console.error('Supabase removal error:', error);
+        throw new Error(error.message || 'Database error');
+    }else{
+        revalidatePath('/questions');
+    }
+
 }

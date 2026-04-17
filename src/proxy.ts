@@ -30,7 +30,7 @@ export async function proxy(request: NextRequest) {
     const isTeacherRoute =
         path.startsWith('/teacher_home') ||
         path.startsWith('/lobby') ||
-        path.startsWith('/questions');
+        path.startsWith('/create_questions');
 
     const isStudentRoute =
         path.startsWith('/student_home') ||

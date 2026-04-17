@@ -32,8 +32,8 @@ export default function PostLoginHome() {
               <a className={styles.primaryBtn} href="/lobby">
                 Host a match
               </a>
-              <a className={styles.secondaryBtn} href="/questions">
-                View question sets
+              <a className={styles.secondaryBtn} href="/create_questions">
+                Create Questions
               </a>
             </div>
           </div>
