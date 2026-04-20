@@ -41,7 +41,7 @@ export default function LobbyPage() {
     const [pagePhase, setPagePhase] = useState<PagePhase>('connecting');
     const [lobby, setLobby] = useState<LobbyState | null>(null);
     const [errorMsg, setErrorMsg] = useState('');
-    const [now, setNow] = useState(Date.now());
+    const [now, setNow] = useState(() => Date.now());
     const [rounds, setRounds] = useState(5);
     const [timerSeconds, setTimerSeconds] = useState(20);
     const [categories, setCategories] = useState<string[]>([]);
@@ -99,8 +99,11 @@ export default function LobbyPage() {
                 setErrorMsg(payload.message);
             });
 
-            socket.on('connect_error', () => {
+            socket.on('connect_error', (error) => {
                 setErrorMsg('Could not connect to game server.');
+                console.error('[lobby] Connection error:', error);
+                console.error('[lobby] Error message:', error.message);
+                setErrorMsg(`Connection failed: ${error.message || 'Unknown error'}`);
                 setPagePhase('error');
             });
         }
