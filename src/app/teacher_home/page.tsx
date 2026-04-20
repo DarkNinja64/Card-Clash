@@ -50,6 +50,9 @@ export default function PostLoginHome() {
         <section className={styles.grid}>
           <div className={styles.panel}>
             <h3>Quick Actions</h3>
+            <a className={styles.ghostBtn} href="/teacher_courses">
+              Manage Courses
+            </a>
             <button className={styles.ghostBtn} type="button">
               View game results
             </button>
