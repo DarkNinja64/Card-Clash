@@ -1,8 +1,8 @@
 'use client';
 
 import { useActionState } from 'react';
-import { createCourse, CourseActionState } from './actions';
 import styles from '../teacher_home/teacher_home.module.css';
+import {createCourse} from "@/app/teacher_courses/actions";
 
 export default function CreateCourseForm() {
     const [state, formAction] = useActionState(createCourse, {});
