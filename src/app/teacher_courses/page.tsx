@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from 'next/navigation';
 import  UserName  from "@/components/UserName";
 import styles from '../teacher_home/teacher_home.module.css';
-import { createCourse } from './actions';
+import CreateCourseForm from './CreateCourseForm';
 
 export default async function TeacherCoursesPage()
 {
@@ -11,7 +11,7 @@ export default async function TeacherCoursesPage()
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) redirect('/teacher_login');
 
-    const admin = await createAdminClient();
+    const admin = createAdminClient();
     const { data: courses } = await admin
         .from('courses')
         .select('id, name, created_at')
@@ -42,22 +42,7 @@ export default async function TeacherCoursesPage()
                     {/* Create course form */}
                     <div className={styles.panel}>
                         <h3>New Course</h3>
-                        <form action={createCourse}>
-                            <input type="hidden" name="teacher_id" value={user.id} />
-                            <input
-                                name="name"
-                                type="text"
-                                placeholder="Course name"
-                                required
-                                style={{ width: '100%', padding: '10px', borderRadius: '10px',
-                                    border: '1px solid rgba(255,255,255,0.2)',
-                                    background: 'rgba(255,255,255,0.07)', color: '#f7f3ff',
-                                    marginBottom: '10px' }}
-                            />
-                            <button className={styles.primaryBtn} type="submit">
-                                Create Course
-                            </button>
-                        </form>
+                        <CreateCourseForm/>
                     </div>
                     {/* Course list */}
                     {courses && courses.length > 0 ? (
