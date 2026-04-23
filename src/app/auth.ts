@@ -37,7 +37,7 @@ export async function studentSignUp(email: string, password: string) {
   const admin = createAdminClient();
   const { error: profileError } = await admin
     .from('profiles')
-    .insert({ id: data.user.id, role: 'student' });
+    .insert({ id: data.user.id, email: email, role: 'student' });
 
   if (profileError) return { error: profileError.message };
 
@@ -81,7 +81,7 @@ export async function teacherSignUp(email: string, password: string) {
   const admin = createAdminClient();
   const { error: profileError } = await admin
     .from('profiles')
-    .insert({ id: data.user.id, role: 'teacher' });
+    .insert({ id: data.user.id, email: email, role: 'teacher' });
 
   if (profileError) return { error: profileError.message };
 

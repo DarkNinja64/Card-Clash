@@ -15,20 +15,20 @@ export async function enrollStudent(
     if (!user) return { error: 'Not authenticated' };
 
     const courseId = formData.get('courseId') as string;
-    const displayname = formData.get('displayname') as string;
-    if (!displayname?.trim()) return { error: 'Display name is required' };
+    const email = formData.get('email') as string;
+    if (!email?.trim()) return { error: 'Student email is required' };
 
     const admin = createAdminClient();
 
-    // Look up the student by display name
     const { data: profile } = await admin
         .from('profiles')
-        .select('id')
-        .eq('displayname', displayname.trim())
+        .select('id, role')
+        .eq('email', email.trim())
         .eq('role', 'student')
         .single();
 
-    if (!profile) return { error: 'No student found with that display name' };
+    if (!profile) return { error: 'No student account found with that email' };
+
 
     const { error: insertError } = await admin
         .from('course_enrollments')
