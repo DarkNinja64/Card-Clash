@@ -28,11 +28,14 @@ Specialized profile for students.
 Courses created and managed by teachers.
 - **id** (UUID, PK): Unique course identifier
 - **teacher_id** (UUID, FK): References `teacher_profiles(profile_id)`
+- **name** (TEXT, NOT NULL): Course name
 
 #### `course_enrollments`
 Student enrollment in courses.
 - **id** (UUID, PK): Unique enrollment record
 - **student_id** (UUID, FK): References `student_profiles(profile_id)`
+- **course_id** (UUID, FK): References `courses(id)`
+- **created_at** (TIMESTAMP TZ): Enrollment timestamp (default: now)
 
 ### Question & Answer Management
 

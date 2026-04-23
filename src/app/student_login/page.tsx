@@ -15,18 +15,18 @@ export default function LoginPage() {
 
   // Log in and sign up handling
   const handleSignIn = async () => {
-    if (!displayName || !email || !password) return setMessage('Please enter username, email, and password');
+    if (!email || !password) return setMessage('Please enter email, and password');
     setLoading(true);
-    const result = await studentLogIn(displayName, email, password);
+    const result = await studentLogIn(email, password);
     if (result?.error) setMessage(result.error);
 
     setLoading(false);
   };
 
   const handleSignUp = async () => {
-    if (!displayName || !email || !password) return setMessage('Please enter username, email, and password');
+    if (!displayName || !email || !password) return setMessage('Please enter email, and password');
     setLoading(true);
-    const result = await studentSignUp(displayName, email, password);
+    const result = await studentSignUp(email, password);
     if (result?.error) setMessage(result.error);
     else if (result?.message) setMessage(result.message);
     setLoading(false);
@@ -46,17 +46,7 @@ export default function LoginPage() {
         <div className={styles.roleGrid}>
           <section className={styles.roleCard}>
             <h2>Student</h2>
-            <label className={styles.label} htmlFor="student-name">
-              Display name
-            </label>
-            <input
-              id="student-name"
-              type="text"
-              placeholder="username"
-              className={styles.input}
-              value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
-            />
+
 
             <label className={styles.label} htmlFor="student-email">
               Email

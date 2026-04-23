@@ -29,8 +29,9 @@ export default async function TeacherCoursesPage()
                         <p className={styles.brandTag}>My Courses</p>
                     </div>
                 </div>
-                <a className={styles.secondaryBtn} href="/teacher_home">← Back</a>
+                <a className={styles.secondaryBtn} href="/teacher_home"> ← Back</a>
             </header>
+
             <main className={styles.main}>
                 <section className={styles.hero}>
                     <div>
@@ -66,6 +67,7 @@ export default async function TeacherCoursesPage()
                     )}
                 </div>
             </main>
+
         </div>
     );
 }
