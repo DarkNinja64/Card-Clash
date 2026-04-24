@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
 import styles from './lobby.module.css';
-import { getTeacherToken, fetchCategories } from './actions';
+import { getTeacherToken, fetchTeacherDecks } from './actions';
 import UserName from "@/components/UserName";
 
 type Question = { id: string; category: string; question: string; answer: string };
@@ -44,8 +44,8 @@ export default function LobbyPage() {
     const [now, setNow] = useState(() => Date.now());
     const [rounds, setRounds] = useState(5);
     const [timerSeconds, setTimerSeconds] = useState(20);
-    const [categories, setCategories] = useState<string[]>([]);
-    const [selectedCategory, setSelectedCategory] = useState<string>('');
+    const [decks, setDecks] = useState<{ id: string; name: string }[]>([]);
+    const [selectedDeck, setSelectedDeck] = useState<string>('');
 
     const socketRef = useRef<Socket | null>(null);
 
@@ -57,7 +57,7 @@ export default function LobbyPage() {
 
     // load available question categories
     useEffect(() => {
-        fetchCategories().then(setCategories);
+        fetchTeacherDecks().then(setDecks);
     }, []);
 
     useEffect(() => {
@@ -117,11 +117,12 @@ export default function LobbyPage() {
 
     const handleStartGame = () => {
         if (!lobby || lobby.players.length === 0) return;
+        if (!selectedDeck) return;
         socketRef.current?.emit('start_game', {
             code: lobby.code,
             rounds,
             timer_seconds: timerSeconds,
-            category: selectedCategory || null,
+            deck_id: selectedDeck || null,
         });
     };
 
@@ -235,15 +236,15 @@ export default function LobbyPage() {
                         <div className={styles.panel}>
                             <h3>Game Settings</h3>
                             <label className={styles.settingRow}>
-                                <span>Question category</span>
+                                <span>Deck</span>
                                 <select
                                     className={styles.select}
-                                    value={selectedCategory}
-                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    value={selectedDeck}
+                                    onChange={(e) => setSelectedDeck(e.target.value)}
                                 >
-                                    <option value="">All categories</option>
-                                    {categories.map((cat) => (
-                                        <option key={cat} value={cat}>{cat}</option>
+                                    <option value="">Select a deck...</option>
+                                    {decks.map((deck) => (
+                                        <option key={deck.id} value={deck.id}>{deck.name}</option>
                                     ))}
                                 </select>
                             </label>
@@ -276,7 +277,7 @@ export default function LobbyPage() {
                             <button
                                 className={styles.primaryBtn}
                                 type="button"
-                                disabled={students.length === 0}
+                                disabled={students.length === 0 || !selectedDeck}
                                 onClick={handleStartGame}
                             >
                                 Start game

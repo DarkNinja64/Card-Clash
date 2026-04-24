@@ -41,6 +41,12 @@ export async function studentSignUp(email: string, password: string) {
 
   if (profileError) return { error: profileError.message };
 
+  const { error: studentProfileError } = await admin
+      .from('student_profiles')
+      .insert({ profile_id: data.user.id });
+  if (studentProfileError) return { error: studentProfileError.message };
+
+
   return { message: 'Account created successfully! Login to start.' };
 }
 
@@ -84,6 +90,12 @@ export async function teacherSignUp(email: string, password: string) {
     .insert({ id: data.user.id, email: email, role: 'teacher' });
 
   if (profileError) return { error: profileError.message };
+
+  const { error: teacherProfileError } = await admin
+      .from('teacher_profiles')
+      .insert({ profile_id: data.user.id });
+  if (teacherProfileError) return { error: teacherProfileError.message };
+
 
   return { message: 'Account created successfully! Login to start.' };
 }

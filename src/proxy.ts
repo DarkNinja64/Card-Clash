@@ -30,13 +30,15 @@ export async function proxy(request: NextRequest) {
     const isTeacherRoute =
         path.startsWith('/teacher_home') ||
         path.startsWith('/lobby') ||
-        path.startsWith('/create_questions');
+        path.startsWith('/create_questions') ||
+        path.startsWith('/teacher_courses');
 
     const isStudentRoute =
         path.startsWith('/student_home') ||
         path.startsWith('/student_lobby') ||
         path.startsWith('/party') ||
-        path.startsWith('/student_study_session');
+        path.startsWith('/student_study_session') ||
+        path.startsWith('/student_course_enrollments');
 
     // redirect unauthenticated users to the right login page
     if (!user && isTeacherRoute) {

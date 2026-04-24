@@ -4,6 +4,7 @@ import { redirect, notFound } from 'next/navigation';
 import UserName from "@/components/UserName";
 import styles from '../../teacher_home/teacher_home.module.css';
 import AddStudentForm from "@/app/teacher_courses/[id]/AddStudentForm";
+import CreateDeckForm from "@/app/teacher_courses/[id]/deck/CreateDeckForm";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -45,9 +46,11 @@ export default async function CourseDetailPage({ params }: Props) {
     // Fetch decks for this course
     const { data: decks } = await admin
         .from('decks')
-        .select('id, created_at')
+        .select('id, name, created_at')
         .eq('course_id', id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+
+    console.log('decks:', decks);
 
     return (
         <div className={styles.page}>
@@ -88,19 +91,32 @@ export default async function CourseDetailPage({ params }: Props) {
                         <AddStudentForm courseId={id} />
                     </div>
 
-                    {/* Decks */}
+                    {/* New Deck panel */}
                     <div className={styles.panel}>
-                        <h3>Decks ({decks?.length ?? 0})</h3>
-                        {decks && decks.length > 0 ? (
-                            decks.map((deck) => (
-                                <p key={deck.id} style={{ color: 'rgba(247,243,255,0.8)' }}>
-                                    Deck — {new Date(deck.created_at).toLocaleDateString()}
-                                </p>
-                            ))
-                        ) : (
-                            <p style={{ color: 'rgba(247,243,255,0.5)' }}>No decks yet.</p>
-                        )}
+                        <h3>New Deck</h3>
+                        <CreateDeckForm courseId={id} />
                     </div>
+
+                    {/* One panel per deck */}
+                    {decks && decks.length > 0 ? (
+                        decks.map((deck) => (
+                            <div key={deck.id} className={styles.panel}>
+                                <h3>{deck.name}</h3>
+                                <p style={{ color: 'rgba(247,243,255,0.6)', fontSize: '0.85rem' }}>
+                                    Created {new Date(deck.created_at).toLocaleDateString()}
+                                </p>
+                                <a className={styles.ghostBtn} href={`/teacher_courses/${id}/deck/${deck.id}`}>
+                                    View Deck →
+                                </a>
+                            </div>
+                        ))
+                    ) : (
+                        <div className={styles.panel}>
+                            <p style={{ color: 'rgba(247,243,255,0.6)' }}>
+                                No decks yet. Create your first one.
+                            </p>
+                        </div>
+                    )}
                 </div>
             </main>
         </div>

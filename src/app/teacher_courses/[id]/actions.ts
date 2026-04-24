@@ -57,3 +57,29 @@ export async function unenrollStudent(enrollmentId: string, courseId: string) {
     revalidatePath(`/teacher_courses/${courseId}`);
     return { success: true };
 }
+
+export type DeckActionState = { error?: string; success?: boolean };
+
+export async function createDeck(
+    prevState: DeckActionState,
+    formData: FormData
+): Promise<DeckActionState> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: 'Not authenticated' };
+
+    const name = formData.get('name') as string;
+    const courseId = formData.get('courseId') as string;
+    if (!name?.trim()) return { error: 'Deck name is required' };
+
+    const admin = createAdminClient();
+    const { error: insertError } = await admin
+        .from('decks')
+        .insert({ name: name.trim(), course_id: courseId, created_by: user.id });
+
+    if (insertError?.code === '23505') return { error: 'A deck with that name already exists in this course' };
+    if (insertError) return { error: insertError.message };
+
+    revalidatePath(`/teacher_courses/${courseId}`);
+    return { success: true };
+}
