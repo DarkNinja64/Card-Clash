@@ -125,22 +125,18 @@ def _resolve_swap_lock(lobby: dict) -> None:
         swapper['swappedThisRound'] = True
 
 
-async def _fetch_questions(category: str | None = None) -> list | None:
+async def _fetch_questions(deck_id: str | None = None) -> list | None:
     key = settings.supabase_service_role_key or settings.supabase_anon_key
     if not key or not settings.supabase_url:
         return None
     try:
-        params: dict = {'select': '*', 'limit': '100'}
-        if category:
-            params['category'] = f'eq.{category}'
         async with httpx.AsyncClient() as client:
             resp = await client.get(
-                f"{settings.supabase_url}/rest/v1/question_card",
+                f"{settings.supabase_url}/rest/v1/deck_question_cards?deck_id=eq.{deck_id}&select=id,question_text,deck_question_card_answer_options(answer_text,is_correct)",
                 headers={
                     'apikey': key,
                     'Authorization': f'Bearer {key}',
                 },
-                params=params,
                 timeout=10,
             )
             resp.raise_for_status()
@@ -148,14 +144,18 @@ async def _fetch_questions(category: str | None = None) -> list | None:
             if not rows:
                 return None
             return [
-                {
-                    'id': str(q['id']),
-                    'category': q.get('category', ''),
-                    'question': q.get('question', ''),
-                    'answer': q.get(f"answer_option_{q.get('correct_answer_option')}", ''),
-                }
-                for q in rows
-            ]
+               {
+                   'id': str(q['id']),
+                   'question': q.get('question_text', ''),
+                   'answer': next(
+                       (opt['answer_text'] for opt in q.get('deck_question_card_answer_options', []) if opt.get('is_correct')),
+                       ''
+                   ),
+                   'options': [opt['answer_text'] for opt in q.get('deck_question_card_answer_options', [])],
+               }
+               for q in rows
+               if q.get('deck_question_card_answer_options')  # skip cards with no answer options
+           ]
     except Exception as e:
         print(f"[party] Supabase question fetch failed: {e}")
         return None
@@ -213,7 +213,7 @@ class PartyNamespace(socketio.AsyncNamespace):
             'players': {},
             'phaseTask': None,
             'questionPool': None,
-            'category': None,
+            'deck_id': None,
         }
         await self.enter_room(sid, code)
         await self._broadcast_lobby(_lobbies[code])
@@ -272,14 +272,16 @@ class PartyNamespace(socketio.AsyncNamespace):
             return
         lobby['maxRounds'] = max(1, min(20, int((data or {}).get('rounds', 5))))
         lobby['timer_s'] = max(10, min(60, int((data or {}).get('timer_seconds', 20))))
-        category = (data or {}).get('category') or None
-        lobby['category'] = category
-        lobby['questionPool'] = await _fetch_questions(category)
+        deck_id = (data or {}).get('deck_id') or None
+        lobby['deck_id'] = deck_id
+        lobby['questionPool'] = await _fetch_questions(deck_id)
         if not lobby['questionPool']:
-            print(f"[party] No questions found for category={category!r}, using default pool")
+            print(f"[party] No questions found for deck_id={deck_id!r}, using default pool")
         lobby['status'] = 'in_game'
         lobby['round'] = 1
         await self._start_round(lobby)
+
+
 
     async def on_end_game(self, sid, data):
         """Host explicitly ends the game early."""

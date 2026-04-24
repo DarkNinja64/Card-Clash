@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import  UserName  from "@/components/UserName";
 import styles from '../teacher_home/teacher_home.module.css';
 import CreateCourseForm from './CreateCourseForm';
+import Link from "next/link";
 
 export default async function TeacherCoursesPage()
 {
@@ -51,11 +52,13 @@ export default async function TeacherCoursesPage()
                             <div key={course.id} className={styles.panel}>
                                 <h3>{course.name}</h3>
                                 <p style={{ color: 'rgba(247,243,255,0.6)', fontSize: '0.85rem' }}>
-                                    Created {new Date(course.created_at).toLocaleDateString()}
+                                    {course.created_at
+                                        ? `Created ${new Date(course.created_at).toLocaleDateString()}`
+                                        : 'Recently created'}
                                 </p>
-                                <a className={styles.ghostBtn} href={`/teacher_courses/${course.id}`}>
+                                <Link className={styles.ghostBtn} href={`/teacher_courses/${course.id}`}>
                                     View Course →
-                                </a>
+                                </Link>
                             </div>
                         ))
                     ) : (
