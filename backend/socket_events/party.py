@@ -153,6 +153,7 @@ async def _fetch_questions(category: str | None = None) -> list | None:
                     'category': q.get('category', ''),
                     'question': q.get('question', ''),
                     'answer': q.get(f"answer_option_{q.get('correct_answer_option')}", ''),
+                    'options': [q.get(f'answer_option_{i}', '') for i in range(1, 5)]
                 }
                 for q in rows
             ]

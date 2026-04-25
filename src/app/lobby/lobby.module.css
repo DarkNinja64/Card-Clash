@@ -203,6 +203,7 @@
   gap: 6px;
   font-size: 0.9rem;
   color: rgba(247, 243, 255, 0.85);
+  scrollbar-color: rgba(16, 26, 43, 0.6) rgba(255, 255, 255, 0.2);
 }
 
 .slider {
@@ -218,6 +219,11 @@
   background: rgba(247, 243, 255, 0.08);
   color: #f7f3ff;
   font-size: 0.9rem;
+}
+
+.select option {
+  background-color: #000000;
+  color: #ffffff;
 }
 
 .navActions {

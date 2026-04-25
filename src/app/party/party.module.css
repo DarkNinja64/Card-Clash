@@ -66,6 +66,38 @@
   gap: 14px;
 }
 
+.panelcard {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow: 0 16px 28px rgba(10, 5, 20, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  display: grid;
+  gap: 14px;
+  min-width: 600px;
+  min-height: 200px;
+}
+
+
+
+
+
+.panelflex {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  padding: 20px;
+  box-shadow: 0 16px 28px rgba(10, 5, 20, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+ 
+
+  
+  gap: 14px;
+}
+
 .subtle {
   color: rgba(247, 243, 255, 0.7);
 }
@@ -106,6 +138,8 @@
   font-size: 1.1rem;
   margin: 0;
 }
+
+
 
 .answer {
   margin: 0;
@@ -158,6 +192,13 @@
   transform: none;
   box-shadow: none;
 }
+.flexset{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;       
+  width: 100%;
+
+}
 
 .playerGrid {
   display: grid;
@@ -167,7 +208,17 @@
 
 .playerCard {
   background: rgba(255, 255, 255, 0.08);
+  
   border-radius: 16px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.playerCardScoreBoard {
+  background: rgba(56, 11, 11, 0.08);
+  border-radius: 16px;
+  max-height: 100px;
   padding: 12px 14px;
   display: grid;
   gap: 6px;

@@ -240,7 +240,7 @@ export default function LobbyPage() {
                                 >
                                     <option value="">All categories</option>
                                     {categories.map((cat) => (
-                                        <option key={cat} value={cat}>{cat}</option>
+                                        <option className={styles.select}  key={cat} value={cat}>{cat}</option>
                                     ))}
                                 </select>
                             </label>

@@ -85,7 +85,7 @@ export default async function QuestionsPage({
           
         </section>
         </form>
-        <form action = {removeQuestionCard}>
+        <section >
             {/*all the questions baby*/}
             <section className={styles.formCard}>
               <h2>Existing questions:</h2>
@@ -110,17 +110,20 @@ export default async function QuestionsPage({
                           </li>
                         ))}
                     </ul>
+                    <form action={removeQuestionCard}>
                     <input type="hidden" name="question" value={q.question} />
+                    
   
                   <button type="submit" className={styles.primaryBtn}>
                       Delete
                   </button>
+                  </form>
                   </article>
 
                 ))}
               </div>
             </section>
-            </form>
+        </section>
             </section>
         
           <form action={createQuestionCard}>
