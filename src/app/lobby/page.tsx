@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
 import styles from './lobby.module.css';
-import { getTeacherToken, fetchCategories } from './actions';
+import { getTeacherToken, fetchTeacherDecks } from './actions';
 import UserName from "@/components/UserName";
 
 type Question = { id: string; category: string; question: string; answer: string };
@@ -41,11 +41,11 @@ export default function LobbyPage() {
     const [pagePhase, setPagePhase] = useState<PagePhase>('connecting');
     const [lobby, setLobby] = useState<LobbyState | null>(null);
     const [errorMsg, setErrorMsg] = useState('');
-    const [now, setNow] = useState(Date.now());
+    const [now, setNow] = useState(() => Date.now());
     const [rounds, setRounds] = useState(5);
     const [timerSeconds, setTimerSeconds] = useState(20);
-    const [categories, setCategories] = useState<string[]>([]);
-    const [selectedCategory, setSelectedCategory] = useState<string>('');
+    const [decks, setDecks] = useState<{ id: string; name: string }[]>([]);
+    const [selectedDeck, setSelectedDeck] = useState<string>('');
 
     const socketRef = useRef<Socket | null>(null);
 
@@ -57,7 +57,7 @@ export default function LobbyPage() {
 
     // load available question categories
     useEffect(() => {
-        fetchCategories().then(setCategories);
+        fetchTeacherDecks().then(setDecks);
     }, []);
 
     useEffect(() => {
@@ -99,8 +99,11 @@ export default function LobbyPage() {
                 setErrorMsg(payload.message);
             });
 
-            socket.on('connect_error', () => {
+            socket.on('connect_error', (error) => {
                 setErrorMsg('Could not connect to game server.');
+                console.error('[lobby] Connection error:', error);
+                console.error('[lobby] Error message:', error.message);
+                setErrorMsg(`Connection failed: ${error.message || 'Unknown error'}`);
                 setPagePhase('error');
             });
         }
@@ -114,11 +117,12 @@ export default function LobbyPage() {
 
     const handleStartGame = () => {
         if (!lobby || lobby.players.length === 0) return;
+        if (!selectedDeck) return;
         socketRef.current?.emit('start_game', {
             code: lobby.code,
             rounds,
             timer_seconds: timerSeconds,
-            category: selectedCategory || null,
+            deck_id: selectedDeck || null,
         });
     };
 
@@ -232,15 +236,17 @@ export default function LobbyPage() {
                         <div className={styles.panel}>
                             <h3>Game Settings</h3>
                             <label className={styles.settingRow}>
-                                <span>Question category</span>
+                                <span>Deck</span>
                                 <select
                                     className={styles.select}
-                                    value={selectedCategory}
-                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    value={selectedDeck}
+                                    onChange={(e) => setSelectedDeck(e.target.value)}
                                 >
-                                    <option value="">All categories</option>
-                                    {categories.map((cat) => (
-                                        <option className={styles.select}  key={cat} value={cat}>{cat}</option>
+
+                                    <option value="">Select a deck...</option>
+                                    {decks.map((deck) => (
+                                        <option key={deck.id} value={deck.id}>{deck.name}</option>
+
                                     ))}
                                 </select>
                             </label>
@@ -273,7 +279,7 @@ export default function LobbyPage() {
                             <button
                                 className={styles.primaryBtn}
                                 type="button"
-                                disabled={students.length === 0}
+                                disabled={students.length === 0 || !selectedDeck}
                                 onClick={handleStartGame}
                             >
                                 Start game

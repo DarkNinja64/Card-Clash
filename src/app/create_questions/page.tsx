@@ -1,7 +1,7 @@
 import styles from "./questions.module.css";
 import { redirect } from 'next/navigation';
-import { createQuestionCard } from './actions';
-import { removeQuestionCard } from './actions';
+import { createQuestion } from './actions';
+import { removeQuestion } from './actions';
 import { createClient } from "@/lib/supabase/server";
 import { fetchCategoriesForStudySession } from "../student_study_session/actions";
 {/*This uses the old question creation system and does not use the new deck system. It will need to be changed once it is implemented*/}
@@ -86,6 +86,7 @@ export default async function QuestionsPage({
         </section>
         </form>
         <section >
+          {/* */}
             {/*all the questions baby*/}
             <section className={styles.formCard}>
               <h2>Existing questions:</h2>
@@ -110,7 +111,7 @@ export default async function QuestionsPage({
                           </li>
                         ))}
                     </ul>
-                    <form action={removeQuestionCard}>
+                    <form >
                     <input type="hidden" name="question" value={q.question} />
                     
   
@@ -124,9 +125,9 @@ export default async function QuestionsPage({
               </div>
             </section>
         </section>
-            </section>
+        </section>
         
-          <form action={createQuestionCard}>
+        <form >
 
         <section className={styles.formCard}>
           <h2>Question details</h2>

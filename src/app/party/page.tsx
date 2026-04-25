@@ -40,7 +40,7 @@ export default function PartyPage() {
   
   const router = useRouter();
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [now, setNow] = useState<number>(Date.now());
+  const [now, setNow] = useState<number>(() => Date.now());
   const [lobby, setLobby] = useState<LobbyState | null>(null);
   const [answerInput, setAnswerInput] = useState<string>('');
   const [hasAnsweredLocally, setHasAnsweredLocally] = useState(false);
@@ -219,7 +219,6 @@ export default function PartyPage() {
           </section>
           {me?.question ? (
             <div className={styles.card}>
-              <p className={styles.subtle}>{me.question.category}</p>
               <p className={styles.question}>{me.question.question}</p>
                {lobby?.phase === 'results' && (
                 <>

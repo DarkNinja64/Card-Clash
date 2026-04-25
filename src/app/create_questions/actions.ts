@@ -1,68 +1,120 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 
-/*
- Insert a question_card record into the database
- */
-export async function createQuestionCard(formData: FormData) {
-    // Use admin client to bypass RLS
-    const supabase = createAdminClient();
+export type QuestionActionState = { error?: string; success?: boolean };
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        throw new Error('Missing Supabase environment variables.');
-    }
+export async function createQuestion
+(prevState: QuestionActionState,
+ formData: FormData ): Promise<QuestionActionState> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return {error: 'Not authenticated'};
 
-    const category = (formData.get('category') as string) || '';
-    const question = (formData.get('question') as string) || '';
-    const difficulty = ((formData.get('difficulty') as string) || 'intro').toLowerCase();
-    const timer_seconds = parseInt(formData.get('timer_seconds') as string) || 60;
-    const answer_option_1 = (formData.get('answer_option_1') as string) || '';
-    const answer_option_2 = (formData.get('answer_option_2') as string) || '';
-    const answer_option_3 = (formData.get('answer_option_3') as string) || '';
-    const answer_option_4 = (formData.get('answer_option_4') as string) || '';
-    const correct_answer_option = (formData.get('correct_answer_option') as string) || '';
+    const question_text = (formData.get('question_text') as string)?.trim();
+    if (!question_text) return {error: 'Question text is required'};
 
-    const { data, error } = await supabase
-        .from('question_card')
-        .insert({
-            category,
-            question,
-            difficulty,
-            timer_seconds,
-            answer_option_1,
-            answer_option_2,
-            answer_option_3,
-            answer_option_4,
-            correct_answer_option,
-        })
-        .select()
+    const admin = createAdminClient();
+
+    // Insert question
+    const { data: question, error: questionError } = await admin
+        .from('questions')
+        .insert({ question_text, created_by: user.id })
+        .select('id')
         .single();
 
-    if (error) {
-        console.error('Supabase insert error:', error);
-        throw new Error(error.message || 'Database error');
-    }else{
-        revalidatePath('/questions');
+    if (questionError) return {error: questionError.message};
+
+    // Build answer options — only include non-empty ones
+    const correctOption = formData.get('correct_answer_option') as string;
+    const answerOptions = ['1', '2', '3', '4']
+        .map((n) => ({
+            question_id: question.id,
+            answer_text: (formData.get(`answer_option_${n}`) as string)?.trim(),
+            is_correct: correctOption === n,
+        }))
+        .filter((opt) => opt.answer_text);
+
+    if (answerOptions.length < 2) return {error: 'At least 2 answer options are required'};
+
+    const { error: answersError } = await admin
+        .from('answer_options')
+        .insert(answerOptions);
+
+    if (answersError) return {error:answersError.message};
+
+    const tagIds = formData.getAll('tag_ids') as string[];
+
+    if (tagIds.length > 0) {
+        const questionTags = tagIds.map((tag_id) => ({
+            question_id: question.id,
+            tag_id,
+        }));
+
+        const { error: tagsError } = await admin
+            .from('question_tags')
+            .insert(questionTags);
+
+        if (tagsError) return {error:tagsError.message};
     }
 
-    return data;
+    revalidatePath('/create_questions');
+    return {success: true};
 }
 
-export async function removeQuestionCard(formData: FormData){
-    const supabase = createAdminClient();
-    const question = (formData.get('question') as string) || '';
-    const { error } = await supabase
-        .from('question_card')
-        .delete()
-        .eq('question', question);
-    if (error) {
-         console.error('Supabase removal error:', error);
-        throw new Error(error.message || 'Database error');
-    }else{
-        revalidatePath('/questions');
+export async function updateQuestion(
+    prevState: QuestionActionState,
+    formData: FormData
+): Promise<QuestionActionState> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: 'Not authenticated' };
+    const questionId = formData.get('question_id') as string;
+    const question_text = (formData.get('question_text') as string)?.trim();
+    if (!question_text) return { error: 'Question text is required' };
+    const admin = createAdminClient();
+    const { error: updateError } = await admin
+        .from('questions')
+        .update({ question_text })
+        .eq('id', questionId);
+    if (updateError) return { error: updateError.message };
+    // Replace answer options
+    await admin.from('answer_options').delete().eq('question_id', questionId);
+    const correctOption = formData.get('correct_answer_option') as string;
+    const answerOptions = ['1', '2', '3', '4']
+        .map((n) => ({
+            question_id: questionId,
+            answer_text: (formData.get(`answer_option_${n}`) as string)?.trim(),
+            is_correct: correctOption === n,
+        }))
+        .filter((opt) => opt.answer_text);
+    if (answerOptions.length < 2) return { error: 'At least 2 answer options are required' };
+    const { error: answersError } = await admin.from('answer_options').insert(answerOptions);
+    if (answersError) return { error: answersError.message };
+    // Replace tags
+    await admin.from('question_tags').delete().eq('question_id', questionId);
+    const tagIds = formData.getAll('tag_ids') as string[];
+    if (tagIds.length > 0) {
+        await admin.from('question_tags').insert(
+            tagIds.map((tag_id) => ({ question_id: questionId, tag_id }))
+        );
     }
+    revalidatePath('/create_questions');
+    return { success: true };
+}
 
+
+export async function removeQuestion(formData: FormData) {
+    const admin = createAdminClient();
+    const questionId = formData.get('question_id') as string;
+
+    // Delete answer options first in case there's no cascade
+    await admin.from('answer_options').delete().eq('question_id', questionId);
+
+    const { error } = await admin.from('questions').delete().eq('id', questionId);
+    if (error) throw new Error(error.message);
+
+    revalidatePath('/create_questions');
 }

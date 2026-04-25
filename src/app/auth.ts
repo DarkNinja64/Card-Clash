@@ -5,24 +5,18 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { redirect } from 'next/navigation';
 
 // Student sign in with username validity
-export async function studentLogIn(username: string, email: string, password: string) {
+export async function studentLogIn(email: string, password: string) {
   const supabase = await createClient();
-
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: error.message };
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('displayname, role')
+    .select('role')
     .eq('id', data.user.id)
     .single();
 
     if (profileError || !profile) return { error: 'No account matching this info was found.'};
-    if (profile.displayname !== username) {
-      await supabase.auth.signOut();
-      return { error: 'Username does not match account.'};
-    }
-
     if (profile.role !== 'student') {
       await supabase.auth.signOut();
       return { error: 'Not a valid student account.'};
@@ -32,7 +26,7 @@ export async function studentLogIn(username: string, email: string, password: st
 }
 
 // Student sign up
-export async function studentSignUp(username: string, email: string, password: string) {
+export async function studentSignUp(email: string, password: string) {
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signUp({ email, password });
@@ -43,9 +37,15 @@ export async function studentSignUp(username: string, email: string, password: s
   const admin = createAdminClient();
   const { error: profileError } = await admin
     .from('profiles')
-    .insert({ id: data.user.id, displayname: username, role: 'student' });
+    .insert({ id: data.user.id, email: email, role: 'student' });
 
   if (profileError) return { error: profileError.message };
+
+  const { error: studentProfileError } = await admin
+      .from('student_profiles')
+      .insert({ profile_id: data.user.id });
+  if (studentProfileError) return { error: studentProfileError.message };
+
 
   return { message: 'Account created successfully! Login to start.' };
 }
@@ -87,9 +87,15 @@ export async function teacherSignUp(email: string, password: string) {
   const admin = createAdminClient();
   const { error: profileError } = await admin
     .from('profiles')
-    .insert({ id: data.user.id, role: 'teacher' });
+    .insert({ id: data.user.id, email: email, role: 'teacher' });
 
   if (profileError) return { error: profileError.message };
+
+  const { error: teacherProfileError } = await admin
+      .from('teacher_profiles')
+      .insert({ profile_id: data.user.id });
+  if (teacherProfileError) return { error: teacherProfileError.message };
+
 
   return { message: 'Account created successfully! Login to start.' };
 }

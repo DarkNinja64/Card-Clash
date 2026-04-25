@@ -37,6 +37,7 @@ export default function PostLoginHome() {
               <a className={styles.secondaryBtn} href="/student_study_session">
                 Study a set
               </a>
+
             </div>
           </div>
           <div className={styles.card}>
@@ -52,6 +53,9 @@ export default function PostLoginHome() {
         <section className={styles.grid}>
           <div className={styles.panel}>
             <h3>Quick Actions</h3>
+            <a className={styles.secondaryBtn} href = "/student_course_enrollments">
+              Manage Courses
+            </a>
             <button className={styles.ghostBtn} type="button">
               Review game scores
             </button>

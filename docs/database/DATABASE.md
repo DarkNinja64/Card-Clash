@@ -81,10 +81,12 @@ Courses created and managed by teachers.
 #### `course_enrollments`
 Student enrollment records linking students to courses.
 
-| Column | Type | Constraints |
-|--------|------|-------------|
-| `id` | UUID | PRIMARY KEY |
+| Column       | Type | Constraints                                 |
+|--------------|------|---------------------------------------------|
+| `id`         | UUID | PRIMARY KEY                                 |
 | `student_id` | UUID | NOT NULL, FK → student_profiles(profile_id) |
+| `course_id`  | TEXT | NOT NULL, FK → courses(id)                  |
+| `created_at  | TIMESTAMP TZ | - | now()                           |
 
 **Purpose**: Tracks which students are enrolled in which courses.
 
