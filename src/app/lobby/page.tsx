@@ -242,11 +242,9 @@ export default function LobbyPage() {
                                     value={selectedDeck}
                                     onChange={(e) => setSelectedDeck(e.target.value)}
                                 >
-
                                     <option value="">Select a deck...</option>
                                     {decks.map((deck) => (
                                         <option key={deck.id} value={deck.id}>{deck.name}</option>
-
                                     ))}
                                 </select>
                             </label>
