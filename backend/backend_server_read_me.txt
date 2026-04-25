@@ -7,7 +7,7 @@ REQUIREMENTS: Python 3.11+, pip
 SETUP
 -----
 1. python3 -m venv venv
-2. source venv/bin/activate  (Windows: venv\Scripts\activate)
+2. source venv/bin/activate  (Windows: venv/Scripts/activate)
 3. pip install -r requirements.txt
 4. Create a .env file in the backend/ folder (see below)
 5. uvicorn main:combined_app --reload
