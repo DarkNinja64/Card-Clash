@@ -220,6 +220,12 @@
   font-size: 0.9rem;
 }
 
+.select option {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+
 .navActions {
   display: flex;
   align-items: center;
