@@ -66,21 +66,14 @@ export default async function DeckDetailPage({ params }: Props) {
     // All questions available to add (exclude ones already in the deck)
     const existingQuestionIds = deckQuestions?.map((dq) => dq.question_id) ?? [];
 
-    // fetch tags
-    const { data: tags } = await admin
-        .from('tags')
-        .select('id, name')
-        .order('name');
-
-// update availableQuestions to include question_tags
     const { data: availableQuestions } = existingQuestionIds.length > 0
         ? await admin
             .from('questions')
-            .select('id, question_text, question_tags(tag_id)')
+            .select('id, question_text')
             .not('id', 'in', `(${existingQuestionIds.join(',')})`)
         : await admin
             .from('questions')
-            .select('id, question_text, question_tags(tag_id)');
+            .select('id, question_text');
 
 
 
@@ -115,8 +108,7 @@ export default async function DeckDetailPage({ params }: Props) {
                             <AddQuestionForm
                                 deckId={deckId}
                                 courseId={id}
-                                questions={availableQuestions}
-                                tags={tags ?? []} />
+                                questions={availableQuestions} />
                         ) : (
                             <p style={{ color: 'rgba(247,243,255,0.5)' }}>
                                 All questions are already in this deck.

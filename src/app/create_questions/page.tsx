@@ -13,13 +13,8 @@ export default async function QuestionsPage() {
 
     const { data: questions } = await admin
         .from('questions')
-        .select('id, question_text, answer_options(id, answer_text, is_correct), question_tags(tag_id)')
+        .select('id, question_text, answer_options(id, answer_text, is_correct)')
         .order('id', { ascending: false });
-
-    const { data: tags } = await admin
-        .from('tags')
-        .select('id, name')
-        .order('name');
 
     return (
         <div className={styles.page}>
@@ -35,7 +30,7 @@ export default async function QuestionsPage() {
 
             </header>
             <main className={styles.main}>
-                <QuestionManager questions={questions ?? []} tags={tags ?? []} />
+                <QuestionManager questions={questions ?? []} />
             </main>
         </div>
     );

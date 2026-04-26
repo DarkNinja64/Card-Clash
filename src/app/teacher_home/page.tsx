@@ -51,7 +51,7 @@ export default function PostLoginHome() {
           <div className={styles.panel}>
             <h3>Quick Actions</h3>
             <a className={styles.ghostBtn} href="/teacher_courses">
-              Manage Courses
+              Manage Decks
             </a>
             <button className={styles.ghostBtn} type="button">
               View game results

@@ -90,10 +90,6 @@ export default function LoginPage() {
               >
                 Create Student Account
               </button>
-
-              <a className={styles.ghostBtn} href="/student_home?bypass=1">
-                Bypass (Test)
-              </a>
             </div>
 
           </section>

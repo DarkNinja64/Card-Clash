@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import styles from './student_study_session.module.css';
 import {
-    fetchCategoriesForStudySession,
+    fetchDecksForStudySession,
     fetchQuestionsForStudySession,
+    type StudyDeck,
     type StudyQuestion,
 } from './actions';
 
@@ -37,11 +38,15 @@ const MOCK_QUESTIONS: StudyQuestion[] = [
 ];
 
 type GamePhase = 'category_select' | 'ready' | 'question' | 'result' | 'game_over';
+type PreloadedFeedback = {
+    correct: string;
+    incorrect: string;
+};
 
 export default function StudyPage() {
     const [phase, setPhase] = useState<GamePhase>('category_select');
-    const [categories, setCategories] = useState<string[]>([]);
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [decks, setDecks] = useState<StudyDeck[]>([]);
+    const [selectedDeck, setSelectedDeck] = useState<StudyDeck | null>(null);
     const [questions, setQuestions] = useState<StudyQuestion[]>([]);
     const [currentRound, setCurrentRound] = useState(0);
     const [correctCount, setCorrectCount] = useState(0);
@@ -50,29 +55,30 @@ export default function StudyPage() {
     const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
     const [lastResult, setLastResult] = useState<{ isCorrect: boolean; points: number } | null>(null);
     const [aiFeedback, setAiFeedback] = useState<string | null>(null);
+    const [preloadedFeedback, setPreloadedFeedback] = useState<PreloadedFeedback | null>(null);
     const [aiLoading, setAiLoading] = useState(false);
     const [aiError, setAiError] = useState<string | null>(null);
     const [timeStarted, setTimeStarted] = useState<number | null>(null);
-    const [loadingCategories, setLoadingCategories] = useState(true);
+    const [loadingDecks, setLoadingDecks] = useState(true);
     const [loadingQuestions, setLoadingQuestions] = useState(false);
-    const [categoriesError, setCategoriesError] = useState(false);
+    const [decksError, setDecksError] = useState(false);
 
     const question = questions[currentRound];
     const totalRounds = questions.length;
 
-    // Fetch categories on mount
+    // Fetch study decks on mount
     useEffect(() => {
-        fetchCategoriesForStudySession()
-            .then(setCategories)
-            .catch(() => setCategoriesError(true))
-            .finally(() => setLoadingCategories(false));
+        fetchDecksForStudySession()
+            .then(setDecks)
+            .catch(() => setDecksError(true))
+            .finally(() => setLoadingDecks(false));
     }, []);
 
-    const handleCategorySelect = useCallback((category: string) => {
-        setSelectedCategory(category);
+    const handleDeckSelect = useCallback((deck: StudyDeck) => {
+        setSelectedDeck(deck);
         setLoadingQuestions(true);
-        setPhase('category_select'); // keep showing category UI while loading
-        fetchQuestionsForStudySession(category)
+        setPhase('category_select');
+        fetchQuestionsForStudySession(deck.id)
             .then((data) => {
                 if (data.length > 0) {
                     setQuestions(data);
@@ -99,6 +105,43 @@ export default function StudyPage() {
         return () => clearInterval(id);
     }, [phase, question, timer, selectedAnswer]);
 
+    useEffect(() => {
+        if (phase !== 'question' || !question) return;
+
+        let cancelled = false;
+        setAiLoading(true);
+        setAiError(null);
+        setAiFeedback(null);
+        setPreloadedFeedback(null);
+
+        fetch('/api/study-feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question: question.text,
+                correctAnswer: question.correct_answer,
+                preload: true,
+            }),
+        })
+            .then((res) => res.json())
+            .then((data) => {
+                if (cancelled) return;
+                setPreloadedFeedback(data?.preloaded || null);
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setAiError('AI feedback unavailable.');
+            })
+            .finally(() => {
+                if (cancelled) return;
+                setAiLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [phase, question]);
+
     const handleAnswer = useCallback(
         (answer: string) => {
             if (selectedAnswer || !question) return;
@@ -119,6 +162,12 @@ export default function StudyPage() {
             setScore((s) => s + points);
             setLastResult({ isCorrect, points });
             setPhase('result');
+
+            if (preloadedFeedback) {
+                setAiFeedback(isCorrect ? preloadedFeedback.correct : preloadedFeedback.incorrect);
+                setAiLoading(false);
+                return;
+            }
 
             setAiLoading(true);
             setAiFeedback(null);
@@ -142,7 +191,7 @@ export default function StudyPage() {
                 })
                 .finally(() => setAiLoading(false));
         },
-        [question, selectedAnswer, timeStarted]
+        [preloadedFeedback, question, selectedAnswer, timeStarted]
     );
 
     const startGame = () => {
@@ -152,6 +201,10 @@ export default function StudyPage() {
         setScore(0);
         setLastResult(null);
         setSelectedAnswer(null);
+        setAiFeedback(null);
+        setAiError(null);
+        setPreloadedFeedback(null);
+        setAiLoading(false);
         const q = questions[0];
         setTimer(q?.timer_seconds ?? 10);
         setTimeStarted(Date.now());
@@ -160,6 +213,9 @@ export default function StudyPage() {
     const nextRound = () => {
         setLastResult(null);
         setSelectedAnswer(null);
+        setAiFeedback(null);
+        setAiError(null);
+        setPreloadedFeedback(null);
         if (currentRound + 1 >= totalRounds) {
             setPhase('game_over');
             return;
@@ -171,9 +227,9 @@ export default function StudyPage() {
         setPhase('question');
     };
 
-    const chooseDifferentCategory = () => {
+    const chooseDifferentDeck = () => {
         setPhase('category_select');
-        setSelectedCategory(null);
+        setSelectedDeck(null);
         setQuestions([]);
     };
 
@@ -185,6 +241,7 @@ export default function StudyPage() {
         setSelectedAnswer(null);
         setLastResult(null);
         setAiFeedback(null);
+        setPreloadedFeedback(null);
         setAiError(null);
         setAiLoading(false);
         setTimeStarted(null);
@@ -200,13 +257,13 @@ export default function StudyPage() {
                 <main className={styles.main}>
                     <section className={styles.card}>
                         <h1>Solo Study</h1>
-                        <p>Choose a category to practice:</p>
-                        {loadingCategories ? (
-                            <p>Loading categories...</p>
-                        ) : categoriesError || categories.length === 0 ? (
+                        <p>Choose a study set to practice:</p>
+                        {loadingDecks ? (
+                            <p>Loading decks...</p>
+                        ) : decksError || decks.length === 0 ? (
                             <>
                                 <p className={styles.fallbackMsg}>
-                                    {categoriesError ? 'Could not load categories. Using practice set.' : 'No categories yet.'}
+                                    {decksError ? 'Could not load study decks. Using practice set.' : 'No study decks available yet.'}
                                 </p>
                                 <button
                                     className={styles.primaryBtn}
@@ -220,14 +277,15 @@ export default function StudyPage() {
                             </>
                         ) : (
                             <div className={styles.categoryList}>
-                                {categories.map((cat) => (
+                                {decks.map((deck) => (
                                     <button
-                                        key={cat}
+                                        key={deck.id}
                                         className={styles.categoryBtn}
-                                        onClick={() => handleCategorySelect(cat)}
+                                        onClick={() => handleDeckSelect(deck)}
                                         disabled={loadingQuestions}
                                     >
-                                        {cat}
+                                        <strong>{deck.name}</strong>
+                                        {deck.courseName ? ` - ${deck.courseName}` : ''}
                                     </button>
                                 ))}
                             </div>
@@ -239,7 +297,7 @@ export default function StudyPage() {
         );
     }
 
-    // Ready to start (after category chosen)
+    // Ready to start (after deck chosen)
     if (phase === 'ready') {
         return (
             <div className={styles.page}>
@@ -249,17 +307,17 @@ export default function StudyPage() {
                 <main className={styles.main}>
                     <section className={styles.card}>
                         <h1>Solo Study</h1>
-                        {selectedCategory && <p className={styles.categoryLabel}>Category: {selectedCategory}</p>}
+                        {selectedDeck && <p className={styles.categoryLabel}>Deck: {selectedDeck.name}</p>}
                         <p>Practice with {totalRounds} questions. Answer quickly for bonus points.</p>
                         <button className={styles.primaryBtn} onClick={startGame}>
                             Start game
                         </button>
-                        <button className={styles.ghostBtn} onClick={chooseDifferentCategory} style={{ marginTop: 12 }}>
-                            Choose different category
+                        <button className={styles.ghostBtn} onClick={chooseDifferentDeck} style={{ marginTop: 12 }}>
+                            Choose different deck
                         </button>
                     </section>
                 </main>
-            </   div>
+            </div>
         );
     }
 
@@ -278,7 +336,7 @@ export default function StudyPage() {
                         <p>+ total speed bonus points: {score - (correctCount * 100)}</p>
                             <p className={styles.finalScore}>Final score: {score}</p>
 
-                            {selectedCategory && <p>Category: {selectedCategory}</p>}
+                            {selectedDeck && <p>Deck: {selectedDeck.name}</p>}
                     </section>
                 </main>
             </div>

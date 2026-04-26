@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from 'next/navigation';
 import  UserName  from "@/components/UserName";
 import styles from '../teacher_home/teacher_home.module.css';
-import CreateCourseForm from './CreateCourseForm';
+import CreateDeckForm from './CreateDeckForm';
 import Link from "next/link";
 
 export default async function TeacherCoursesPage()
@@ -13,11 +13,24 @@ export default async function TeacherCoursesPage()
     if (!user) redirect('/teacher_login');
 
     const admin = createAdminClient();
-    const { data: courses } = await admin
-        .from('courses')
-        .select('id, name, created_at')
-        .eq('teacher_id', user.id)
+    const { data: decks } = await admin
+        .from('decks')
+        .select('id, name, created_at, course_id')
+        .eq('created_by', user.id)
         .order('created_at', { ascending: false } );
+
+    const deckIds = decks?.map((deck) => deck.id) ?? [];
+    const { data: deckCards } = deckIds.length > 0
+        ? await admin
+            .from('deck_question_cards')
+            .select('id, deck_id')
+            .in('deck_id', deckIds)
+        : { data: [] };
+
+    const questionCounts = new Map<string, number>();
+    for (const card of deckCards ?? []) {
+        questionCounts.set(card.deck_id, (questionCounts.get(card.deck_id) ?? 0) + 1);
+    }
 
     return (
         <div className={styles.page}>
@@ -27,7 +40,7 @@ export default async function TeacherCoursesPage()
                     <div>
                         <p className={styles.brandTitle}>Card Clash</p>
                         <p className={styles.brandTag}><UserName/></p>
-                        <p className={styles.brandTag}>My Courses</p>
+                        <p className={styles.brandTag}>My Decks</p>
                     </div>
                 </div>
                 <a className={styles.secondaryBtn} href="/teacher_home"> ← Back</a>
@@ -36,35 +49,36 @@ export default async function TeacherCoursesPage()
             <main className={styles.main}>
                 <section className={styles.hero}>
                     <div>
-                        <h1>Your Courses</h1>
-                        <p>Create and manage the courses your students enroll in.</p>
+                        <h1>Your Decks</h1>
+                        <p>Create a deck, then add questions underneath it. No course setup required.</p>
                     </div>
                 </section>
                 <div className={styles.grid}>
-                    {/* Create course form */}
                     <div className={styles.panel}>
-                        <h3>New Course</h3>
-                        <CreateCourseForm/>
+                        <CreateDeckForm />
                     </div>
-                    {/* Course list */}
-                    {courses && courses.length > 0 ? (
-                        courses.map((course) => (
-                            <div key={course.id} className={styles.panel}>
-                                <h3>{course.name}</h3>
+
+                    {decks && decks.length > 0 ? (
+                        decks.map((deck) => (
+                            <div key={deck.id} className={styles.panel}>
+                                <h3>{deck.name}</h3>
                                 <p style={{ color: 'rgba(247,243,255,0.6)', fontSize: '0.85rem' }}>
-                                    {course.created_at
-                                        ? `Created ${new Date(course.created_at).toLocaleDateString()}`
+                                    {deck.created_at
+                                        ? `Created ${new Date(deck.created_at).toLocaleDateString()}`
                                         : 'Recently created'}
                                 </p>
-                                <Link className={styles.ghostBtn} href={`/teacher_courses/${course.id}`}>
-                                    View Course →
+                                <p style={{ color: 'rgba(247,243,255,0.75)' }}>
+                                    {questionCounts.get(deck.id) ?? 0} questions
+                                </p>
+                                <Link className={styles.ghostBtn} href={`/teacher_courses/${deck.course_id}/deck/${deck.id}`}>
+                                    Open Deck →
                                 </Link>
                             </div>
                         ))
                     ) : (
                         <div className={styles.panel}>
                             <p style={{ color: 'rgba(247,243,255,0.6)' }}>
-                                No courses yet. Create your first one.
+                                No decks yet. Create your first one.
                             </p>
                         </div>
                     )}

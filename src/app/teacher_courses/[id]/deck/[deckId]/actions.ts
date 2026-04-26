@@ -58,7 +58,6 @@ export async function addQuestionToDeck(
             );
     }
 
-
     revalidatePath(`/teacher_courses/${deckId}`);
     return {success: true};
 }

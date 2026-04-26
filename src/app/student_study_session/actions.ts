@@ -1,7 +1,13 @@
-
 'use server';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
+
+export type StudyDeck = {
+    id: string;
+    name: string;
+    courseName?: string;
+};
 
 export type StudyQuestion = {
     id: string;
@@ -12,48 +18,78 @@ export type StudyQuestion = {
     correct_answer: string;
 };
 
+export async function fetchDecksForStudySession(): Promise<StudyDeck[]> {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
 
-/** Fetch distinct categories from question_card */
-export async function fetchCategoriesForStudySession(): Promise<string[]> {
-    const supabase = createAdminClient();
-    const { data, error } = await supabase
-        .from('question_card')
-        .select('category')
-        .not('category', 'is', null);
+    const admin = createAdminClient();
 
-    if (error) throw new Error('Failed to fetch categories');
+    const { data: enrollments } = await admin
+        .from('course_enrollments')
+        .select('course_id')
+        .eq('student_id', user.id);
 
-    const categories = [...new Set((data ?? []).map((r) => (r.category || '').trim()).filter(Boolean))];
-    return categories.sort((a, b) => a.localeCompare(b));
+    const courseIds = enrollments?.map((enrollment) => enrollment.course_id) ?? [];
+
+    const { data: decks } = courseIds.length > 0
+        ? await admin
+            .from('decks')
+            .select('id, name, course_id')
+            .in('course_id', courseIds)
+            .order('name')
+        : await admin
+            .from('decks')
+            .select('id, name, course_id')
+            .order('name');
+
+    const courseNameById = new Map<string, string>();
+    if (courseIds.length > 0) {
+        const { data: courses } = await admin
+            .from('courses')
+            .select('id, name')
+            .in('id', courseIds);
+
+        for (const course of courses ?? []) {
+            courseNameById.set(course.id, course.name);
+        }
+    }
+
+    return (decks ?? []).map((deck) => ({
+        id: deck.id,
+        name: deck.name,
+        courseName: deck.course_id ? courseNameById.get(deck.course_id) : undefined,
+    }));
 }
 
+export async function fetchQuestionsForStudySession(deckId?: string): Promise<StudyQuestion[]> {
+    if (!deckId) return [];
 
-export async function fetchQuestionsForStudySession(category?: string): Promise<StudyQuestion[]> {
-    const supabase = createAdminClient();
-    let query = supabase.from('question_card').select('*');
-    if (category) query = query.eq('category', category);
-    const { data, error } = await query
-        .order('created_at', { ascending: false })
+    const admin = createAdminClient();
+    const { data, error } = await admin
+        .from('deck_question_cards')
+        .select('id, question_text, deck_question_card_answer_options(answer_text, is_correct)')
+        .eq('deck_id', deckId)
         .limit(20);
 
-    if (error) throw new Error('Failed to fetch create_questions');
+    if (error) throw new Error('Failed to fetch deck questions');
 
-    return (data ?? []).map((row) => {
-        const opts = [
-            row.answer_option_1,
-            row.answer_option_2,
-            row.answer_option_3,
-            row.answer_option_4,
-        ].filter(Boolean);
-        const correctIdx = Math.max(0, parseInt(String(row.correct_answer_option || '1'), 10) - 1);
-        const correctAnswer = opts[correctIdx]?.trim().toLowerCase() ?? '';
-        return {
-            id: row.id,
-            text: row.question,
-            type: 'mc',
-            options: opts.map((t) => ({ text: t })),
-            timer_seconds: row.timer_seconds ?? 60,
-            correct_answer: correctAnswer,
-        };
-    });
+    return (data ?? [])
+        .map((row) => {
+            const options = (row.deck_question_card_answer_options ?? [])
+                .map((option) => option.answer_text)
+                .filter(Boolean);
+
+            const correctAnswer = row.deck_question_card_answer_options?.find((option) => option.is_correct)?.answer_text?.trim().toLowerCase() ?? '';
+
+            return {
+                id: row.id,
+                text: row.question_text,
+                type: 'mc',
+                options: options.map((text) => ({ text })),
+                timer_seconds: 60,
+                correct_answer: correctAnswer,
+            };
+        })
+        .filter((question) => question.options.length >= 2 && question.correct_answer);
 }

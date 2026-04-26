@@ -12,19 +12,6 @@ ANALYZE_S = 20
 RESOLVE_S = 2
 ANSWER_S = 20
 
-_DEFAULT_QUESTION_POOL = [
-    {'id': 'q1', 'category': 'Physics', 'question': 'What keeps a moving bicycle upright?', 'answer': 'Gyroscopic precession'},
-    {'id': 'q2', 'category': 'Math', 'question': 'Solve: 2x + 5 = 15', 'answer': 'x = 5'},
-    {'id': 'q3', 'category': 'Biology', 'question': 'What organelle powers the cell?', 'answer': 'Mitochondria'},
-    {'id': 'q4', 'category': 'Chemistry', 'question': 'pH less than 7 is?', 'answer': 'Acidic'},
-    {'id': 'q5', 'category': 'History', 'question': 'Who wrote the Constitution (US)?', 'answer': 'James Madison'},
-    {'id': 'q6', 'category': 'CS', 'question': 'Big-O for binary search?', 'answer': 'O(log n)'},
-    {'id': 'q7', 'category': 'Algebra', 'question': 'Factor: x^2 - 9', 'answer': '(x-3)(x+3)'},
-    {'id': 'q8', 'category': 'Geo', 'question': 'Capital of Japan?', 'answer': 'Tokyo'},
-    {'id': 'q9', 'category': 'Lit', 'question': 'Author of 1984?', 'answer': 'George Orwell'},
-    {'id': 'q10', 'category': 'Bio', 'question': 'DNA stands for?', 'answer': 'Deoxyribonucleic acid'},
-]
-
 # live lobby state keyed by 5-char lobby code
 _lobbies: dict = {}
 
@@ -55,15 +42,49 @@ def _create_player(sid: str, name: str, user_id: str = '') -> dict:
         'wantsLock': False,
         'swappedThisRound': False,
         'answered': False,
+        'selectedAnswer': None,
+        'lastCorrect': None,
+        'roundScore': 0,
+        'seenQuestionIds': set(),
     }
 
 
-def _serialize_player(p: dict) -> dict:
-    # strip server-only fields before sending to clients
-    return {k: v for k, v in p.items() if k != 'user_id'}
+def _player_question_payload(p: dict, phase: str) -> dict | None:
+    question = p.get('question')
+    if not question:
+        return None
+
+    payload = {
+        'id': question['id'],
+        'question': question['question'],
+        'options': question.get('options', []),
+        'answer': question.get('answer', ''),
+    }
+
+    return payload
 
 
-def _serialize(lobby: dict) -> dict:
+def _serialize_player(p: dict, phase: str, include_question: bool) -> dict:
+    data = {
+        'id': p['id'],
+        'name': p['name'],
+        'score': p['score'],
+        'swapUsed': p['swapUsed'],
+        'lockUsed': p['lockUsed'],
+        'wantsSwap': p['wantsSwap'],
+        'wantsLock': p['wantsLock'],
+        'swappedThisRound': p['swappedThisRound'],
+        'answered': p['answered'],
+        'selectedAnswer': p.get('selectedAnswer'),
+        'lastCorrect': p.get('lastCorrect'),
+        'roundScore': p.get('roundScore', 0),
+    }
+    if include_question:
+        data['question'] = _player_question_payload(p, phase)
+    return data
+
+
+def _serialize(lobby: dict, viewer_sid: str | None = None) -> dict:
     return {
         'code': lobby['code'],
         'hostId': lobby['hostId'],
@@ -71,20 +92,42 @@ def _serialize(lobby: dict) -> dict:
         'round': lobby['round'],
         'maxRounds': lobby.get('maxRounds', 5),
         'timerS': lobby.get('timer_s', 20),
+        'deckId': lobby.get('deck_id'),
+        'deckName': lobby.get('deck_name'),
         'phase': lobby['phase'],
         'phaseEndsAt': lobby['phaseEndsAt'],
-        'players': [_serialize_player(p) for p in lobby['players'].values()],
+        'players': [
+            _serialize_player(
+                p,
+                lobby['phase'],
+                viewer_sid == lobby['hostId'] or viewer_sid == p['id'],
+            )
+            for p in lobby['players'].values()
+        ],
     }
 
 
 def _assign_questions(lobby: dict) -> None:
     players = list(lobby['players'].values())
-    source = lobby['questionPool'] or _DEFAULT_QUESTION_POOL
-    pool = _shuffle(source)
-    while len(pool) < len(players):
-        pool += _shuffle(source)
-    for i, player in enumerate(players):
-        player['question'] = pool[i]
+    source = lobby['questionPool'] or []
+    if not source:
+        return
+    assigned_this_round: set[str] = set()
+
+    for player in players:
+        seen_ids = player.get('seenQuestionIds', set())
+        available = [
+            question for question in source
+            if question['id'] not in assigned_this_round and question['id'] not in seen_ids
+        ]
+        if not available:
+            available = [question for question in source if question['id'] not in assigned_this_round]
+        if not available:
+            available = list(source)
+        chosen = random.choice(available)
+        player['question'] = chosen
+        player['seenQuestionIds'].add(chosen['id'])
+        assigned_this_round.add(chosen['id'])
 
 
 def _reset_round(lobby: dict) -> None:
@@ -93,6 +136,9 @@ def _reset_round(lobby: dict) -> None:
         p['swappedThisRound'] = False
         p['wantsSwap'] = False
         p['wantsLock'] = False
+        p['selectedAnswer'] = None
+        p['lastCorrect'] = None
+        p['roundScore'] = 0
 
 
 def _resolve_swap_lock(lobby: dict) -> None:
@@ -109,8 +155,8 @@ def _resolve_swap_lock(lobby: dict) -> None:
     for swapper in swappers:
         candidates = [p for p in eligible if p['id'] != swapper['id'] and p['id'] not in used]
         if not candidates:
-            # No eligible partner (everyone locked) — pull a random question from the pool instead
-            pool = lobby.get('questionPool') or _DEFAULT_QUESTION_POOL
+            # No eligible partner (everyone locked) — pull a random question from the selected deck instead
+            pool = lobby.get('questionPool') or []
             current_id = str(swapper['question']['id']) if swapper.get('question') else None
             alternates = [q for q in pool if str(q['id']) != current_id]
             if alternates:
@@ -123,6 +169,7 @@ def _resolve_swap_lock(lobby: dict) -> None:
         swapper['question'], target['question'] = target['question'], swapper['question']
         swapper['swapUsed'] = True
         swapper['swappedThisRound'] = True
+        target['swappedThisRound'] = True
 
 
 async def _fetch_questions(deck_id: str | None = None) -> list | None:
@@ -214,6 +261,7 @@ class PartyNamespace(socketio.AsyncNamespace):
             'phaseTask': None,
             'questionPool': None,
             'deck_id': None,
+            'deck_name': None,
         }
         await self.enter_room(sid, code)
         await self._broadcast_lobby(_lobbies[code])
@@ -245,7 +293,7 @@ class PartyNamespace(socketio.AsyncNamespace):
         # already in the lobby as host or player — just resend state
         if lobby['hostId'] == sid or sid in lobby['players']:
             await self.enter_room(sid, code)
-            await self.emit('game_update', _serialize(lobby), to=sid)
+            await self.emit('game_update', _serialize(lobby, sid), to=sid)
             return
 
         # reconnect case: same user, new socket id — re-register the player
@@ -258,7 +306,7 @@ class PartyNamespace(socketio.AsyncNamespace):
                     player['id'] = sid
                     lobby['players'][sid] = player
                     await self.enter_room(sid, code)
-                    await self.emit('game_update', _serialize(lobby), to=sid)
+                    await self.emit('game_update', _serialize(lobby, sid), to=sid)
                     print(f"[party] reconnected user={user_id} old_sid={old_sid} new_sid={sid}")
                     return
 
@@ -270,13 +318,22 @@ class PartyNamespace(socketio.AsyncNamespace):
         if not lobby or lobby['hostId'] != sid:
             await self.emit('error_message', {'message': 'Only the host can start the game.'}, to=sid)
             return
+        deck_id = (data or {}).get('deck_id') or None
+        if not deck_id:
+            await self.emit('error_message', {'message': 'Please select a deck before starting.'}, to=sid)
+            return
         lobby['maxRounds'] = max(1, min(20, int((data or {}).get('rounds', 5))))
         lobby['timer_s'] = max(10, min(60, int((data or {}).get('timer_seconds', 20))))
-        deck_id = (data or {}).get('deck_id') or None
         lobby['deck_id'] = deck_id
+        lobby['deck_name'] = (data or {}).get('deck_name') or 'Selected Deck'
         lobby['questionPool'] = await _fetch_questions(deck_id)
         if not lobby['questionPool']:
-            print(f"[party] No questions found for deck_id={deck_id!r}, using default pool")
+            await self.emit(
+                'error_message',
+                {'message': 'That deck has no playable questions yet. Add questions to the deck first.'},
+                to=sid,
+            )
+            return
         lobby['status'] = 'in_game'
         lobby['round'] = 1
         await self._start_round(lobby)
@@ -299,18 +356,28 @@ class PartyNamespace(socketio.AsyncNamespace):
 
     async def on_submit_answer(self, sid, data):
         code = (data or {}).get('code', '')
-        correct = bool((data or {}).get('correct', False))
+        answer = ((data or {}).get('answer') or '').strip()
         lobby = _lobbies.get(code)
         if not lobby or lobby['phase'] != 'answer':
             return
         player = lobby['players'].get(sid)
-        if not player or player['answered']:
+        if not player or player['answered'] or not player.get('question'):
             return
+        correct_answer = str(player['question'].get('answer', '')).strip()
+        correct = answer == correct_answer
         base = 10 if correct else 0
         bonus = 10 if correct and player['swappedThisRound'] else 0
+        player['selectedAnswer'] = answer
+        player['lastCorrect'] = correct
+        player['roundScore'] = base + bonus
         player['score'] += base + bonus
         player['answered'] = True
         await self._broadcast_game(lobby)
+        if all(p['answered'] for p in lobby['players'].values()):
+            task = lobby.get('phaseTask')
+            if task:
+                task.cancel()
+            lobby['phaseTask'] = asyncio.create_task(self._finish_round_now(lobby))
 
     async def on_request_swap(self, sid, data):
         code = (data or {}).get('code', '')
@@ -371,20 +438,32 @@ class PartyNamespace(socketio.AsyncNamespace):
             await self._broadcast_game(lobby)
             await asyncio.sleep(timer_s)
 
-            lobby['phase'] = 'results'
-            lobby['phaseEndsAt'] = None
-            await self._broadcast_game(lobby)
-
-            if lobby['round'] >= lobby.get('maxRounds', 5):
-                lobby['status'] = 'game_over'
-                lobby['phase'] = 'game_over'
-                await self._broadcast_game(lobby)
-                _lobbies.pop(lobby['code'], None)
+            await self._enter_results_phase(lobby)
         except asyncio.CancelledError:
             pass
 
+    async def _finish_round_now(self, lobby: dict) -> None:
+        try:
+            await self._enter_results_phase(lobby)
+        except asyncio.CancelledError:
+            pass
+
+    async def _enter_results_phase(self, lobby: dict) -> None:
+        lobby['phase'] = 'results'
+        lobby['phaseEndsAt'] = None
+        await self._broadcast_game(lobby)
+
+        if lobby['round'] >= lobby.get('maxRounds', 5):
+            lobby['status'] = 'game_over'
+            lobby['phase'] = 'game_over'
+            await self._broadcast_game(lobby)
+            _lobbies.pop(lobby['code'], None)
+
     async def _broadcast_lobby(self, lobby: dict) -> None:
-        await self.emit('lobby_update', _serialize(lobby), room=lobby['code'])
+        payload = _serialize(lobby, None)
+        await self.emit('lobby_update', payload, room=lobby['code'])
 
     async def _broadcast_game(self, lobby: dict) -> None:
-        await self.emit('game_update', _serialize(lobby), room=lobby['code'])
+        recipients = [lobby['hostId'], *lobby['players'].keys()]
+        for sid in recipients:
+            await self.emit('game_update', _serialize(lobby, sid), to=sid)

@@ -3,10 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import styles from './lobby.module.css';
 import { getTeacherToken, fetchTeacherDecks } from './actions';
 import UserName from "@/components/UserName";
+import { createPartySocket } from '@/lib/socket';
 
 type Question = { id: string; category: string; question: string; answer: string };
 type Player = {
@@ -29,6 +30,7 @@ type LobbyState = {
     round: number;
     maxRounds: number;
     timerS: number;
+    deckName?: string | null;
     phase: string;
     phaseEndsAt: number | null;
     players: Player[];
@@ -69,11 +71,7 @@ export default function LobbyPage() {
                 return;
             }
 
-            const baseUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:8000';
-            const socket = io(`${baseUrl}/party`, {
-                path: '/socket.io',
-                auth: { token: tokenResult.token },
-            });
+            const socket = createPartySocket(tokenResult.token);
 
             socketRef.current = socket;
 
@@ -118,11 +116,13 @@ export default function LobbyPage() {
     const handleStartGame = () => {
         if (!lobby || lobby.players.length === 0) return;
         if (!selectedDeck) return;
+        const deckName = decks.find((deck) => deck.id === selectedDeck)?.name ?? 'Selected Deck';
         socketRef.current?.emit('start_game', {
             code: lobby.code,
             rounds,
             timer_seconds: timerSeconds,
             deck_id: selectedDeck || null,
+            deck_name: deckName,
         });
     };
 
@@ -307,6 +307,9 @@ export default function LobbyPage() {
                         <p className={styles.brandTag}>
                             {isGameOver ? 'Game over' : `Round ${lobby?.round} of ${lobby?.maxRounds} · ${lobby?.phase}`}
                         </p>
+                        {lobby?.deckName ? (
+                            <p className={styles.brandTag}>Deck: {lobby.deckName}</p>
+                        ) : null}
                     </div>
                 </div>
                 <div className={styles.navActions}>
@@ -329,8 +332,27 @@ export default function LobbyPage() {
                                     {p.answered ? '✓' : '·'} {p.name}
                                     {p.wantsSwap && ' (swap)'}
                                     {p.wantsLock && ' (lock)'}
+                                    {lobby?.phase === 'results' && typeof p.answered === 'boolean' && (
+                                        <>
+                                            {' '}
+                                            — {p.score} pts
+                                        </>
+                                    )}
                                 </li>
                             ))}
+                        </ul>
+                    </div>
+
+                    <div className={styles.panel}>
+                        <h3>Standings</h3>
+                        <ul className={styles.playerList}>
+                            {[...(lobby?.players ?? [])]
+                                .sort((a, b) => b.score - a.score)
+                                .map((p, index) => (
+                                    <li key={p.id}>
+                                        #{index + 1} {p.name} — {p.score} pts
+                                    </li>
+                                ))}
                         </ul>
                     </div>
 

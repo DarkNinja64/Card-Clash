@@ -2,24 +2,29 @@
 
 import { useActionState } from 'react';
 import styles from '../teacher_home/teacher_home.module.css';
-import {createCourse} from "@/app/teacher_courses/actions";
+import { createDeck } from '@/app/teacher_courses/actions';
 
-export default function CreateCourseForm() {
-    const [state, formAction] = useActionState(createCourse, {});
+export default function CreateDeckForm() {
+    const [state, formAction] = useActionState(createDeck, {});
 
     return (
         <div className={styles.panel}>
-            <h3>New Course</h3>
+            <h3>New Deck</h3>
             <form action={formAction}>
                 <input
                     name="name"
                     type="text"
-                    placeholder="Course name"
+                    placeholder="Deck name"
                     required
-                    style={{ width: '100%', padding: '10px', borderRadius: '10px',
+                    style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '10px',
                         border: '1px solid rgba(255,255,255,0.2)',
-                        background: 'rgba(255,255,255,0.07)', color: '#f7f3ff',
-                        marginBottom: '10px' }}
+                        background: 'rgba(255,255,255,0.07)',
+                        color: '#f7f3ff',
+                        marginBottom: '10px'
+                    }}
                 />
                 {state?.error && (
                     <p style={{ color: '#ff6f3c', fontSize: '0.85rem', marginBottom: '8px' }}>
@@ -28,11 +33,11 @@ export default function CreateCourseForm() {
                 )}
                 {state?.success && (
                     <p style={{ color: '#2ee6d6', fontSize: '0.85rem', marginBottom: '8px' }}>
-                        Course created!
+                        Deck created!
                     </p>
                 )}
                 <button className={styles.primaryBtn} type="submit">
-                    Create Course
+                    Create Deck
                 </button>
             </form>
         </div>

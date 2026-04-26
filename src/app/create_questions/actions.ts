@@ -45,21 +45,6 @@ export async function createQuestion
 
     if (answersError) return {error:answersError.message};
 
-    const tagIds = formData.getAll('tag_ids') as string[];
-
-    if (tagIds.length > 0) {
-        const questionTags = tagIds.map((tag_id) => ({
-            question_id: question.id,
-            tag_id,
-        }));
-
-        const { error: tagsError } = await admin
-            .from('question_tags')
-            .insert(questionTags);
-
-        if (tagsError) return {error:tagsError.message};
-    }
-
     revalidatePath('/create_questions');
     return {success: true};
 }
@@ -93,14 +78,6 @@ export async function updateQuestion(
     if (answerOptions.length < 2) return { error: 'At least 2 answer options are required' };
     const { error: answersError } = await admin.from('answer_options').insert(answerOptions);
     if (answersError) return { error: answersError.message };
-    // Replace tags
-    await admin.from('question_tags').delete().eq('question_id', questionId);
-    const tagIds = formData.getAll('tag_ids') as string[];
-    if (tagIds.length > 0) {
-        await admin.from('question_tags').insert(
-            tagIds.map((tag_id) => ({ question_id: questionId, tag_id }))
-        );
-    }
     revalidatePath('/create_questions');
     return { success: true };
 }

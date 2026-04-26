@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { getSocket } from '@/lib/socket';
+import { createPartySocket } from '@/lib/socket';
 import { createClient } from '@/lib/supabase/client';
 import styles from './student_lobby.module.css';
 import UserName from "@/components/UserName";
+import type { Socket } from 'socket.io-client';
 
 type Player = { id: string; name: string; score: number };
 
@@ -21,7 +22,7 @@ type LobbyState = {
 
 export default function StudentLobbyPage() {
   const router = useRouter();
-  const [socket, setSocket] = useState<ReturnType<typeof getSocket> | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [lobby, setLobby] = useState<LobbyState | null>(null);
@@ -31,9 +32,8 @@ export default function StudentLobbyPage() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.access_token) {
-        setSocket(getSocket(session.access_token));
-      }
+      const nextSocket = createPartySocket(session?.access_token ?? null);
+      setSocket(nextSocket);
     });
   }, []);
 
@@ -63,6 +63,7 @@ export default function StudentLobbyPage() {
       socket.off('lobby_update', handleLobby);
       socket.off('game_update', handleLobby);
       socket.off('error_message', handleError);
+      socket.disconnect();
     };
   }, [socket]);
 

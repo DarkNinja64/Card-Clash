@@ -131,7 +131,7 @@
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
 .question {
@@ -139,12 +139,61 @@
   margin: 0;
 }
 
+.optionList {
+  display: grid;
+  gap: 10px;
+}
 
+.optionBtn {
+  width: 100%;
+  text-align: left;
+  border-radius: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
+  color: #f7f3ff;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.optionBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 207, 92, 0.7);
+  background: rgba(255, 207, 92, 0.14);
+}
+
+.optionBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
+.optionSelected {
+  border-color: rgba(255, 207, 92, 0.95);
+  background: rgba(255, 207, 92, 0.18);
+}
+
+.optionCorrect {
+  border-color: rgba(46, 230, 214, 0.9);
+  background: rgba(46, 230, 214, 0.16);
+}
 
 .answer {
   margin: 0;
   font-size: 0.95rem;
   color: rgba(247, 243, 255, 0.7);
+}
+
+.aiCard {
+  background: rgba(10, 10, 20, 0.5);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  line-height: 1.6;
+  color: rgba(247, 243, 255, 0.9);
+}
+
+.aiError {
+  color: #ffb4a2;
+  margin: 0;
 }
 
 .primaryBtn,

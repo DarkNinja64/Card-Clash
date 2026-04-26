@@ -9,16 +9,12 @@ type Question = {
     id: string;
     question_text: string;
     answer_options: AnswerOption[];
-    question_tags: { tag_id: string }[];
 };
-type Tag = { id: string; name: string };
 
 export default function QuestionManager({
                                             questions,
-                                            tags,
                                         }: {
     questions: Question[];
-    tags: Tag[];
 }) {
     const [selected, setSelected] = useState<Question | null>(null);
     const [mode, setMode] = useState<'view' | 'edit'>('view');
@@ -48,8 +44,6 @@ export default function QuestionManager({
         setSelected(null);
         setMode('view');
     };
-
-    const selectedTagIds = new Set(selected?.question_tags.map((qt) => qt.tag_id) ?? []);
 
     return (
         <>
@@ -118,19 +112,6 @@ export default function QuestionManager({
                                 ))}
                             </ul>
 
-                            <label className={styles.label}>Tags</label>
-                            <div className={styles.optionList}>
-                                {tags.map((tag) => (
-                                    <label key={tag.id} className={styles.checkLabel}>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedTagIds.has(tag.id)}
-                                            readOnly
-                                        />
-                                        {tag.name}
-                                    </label>
-                                ))}
-                            </div>
                         </>
                     ) : (
                         // key forces form to remount when selected question changes
@@ -175,23 +156,6 @@ export default function QuestionManager({
                                             </div>
                                         );
                                     })}
-                                </div>
-                            </section>
-
-                            <section className={styles.formCard}>
-                                <h2>Tags</h2>
-                                <div className={styles.optionList}>
-                                    {tags.map((tag) => (
-                                        <label key={tag.id} className={styles.checkLabel}>
-                                            <input
-                                                type="checkbox"
-                                                name="tag_ids"
-                                                value={tag.id}
-                                                defaultChecked={selectedTagIds.has(tag.id)}
-                                            />
-                                            {tag.name}
-                                        </label>
-                                    ))}
                                 </div>
                             </section>
 
@@ -244,18 +208,6 @@ export default function QuestionManager({
                                             /> Correct
                                         </label>
                                     </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className={styles.formCard}>
-                            <h2>Tags</h2>
-                            <div className={styles.optionList}>
-                                {tags.map((tag) => (
-                                    <label key={tag.id} className={styles.checkLabel}>
-                                        <input type="checkbox" name="tag_ids" value={tag.id} />
-                                        {tag.name}
-                                    </label>
                                 ))}
                             </div>
                         </section>
