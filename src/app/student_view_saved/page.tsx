@@ -98,7 +98,7 @@ export default function StudentSavedDecksPage() {
                         <h1>My Saved Decks</h1>
                         <p>Decks you've saved from your teachers. Use them to study anytime.</p>
                     </div>
-                    <Link className={styles.primaryBtn} href="/student_save_deck">
+                    <Link className={styles.primaryBtn} href="/student_save_set">
                         + Save a New Deck
                     </Link>
                 </section>
