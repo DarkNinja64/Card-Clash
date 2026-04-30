@@ -15,7 +15,7 @@ export default async function TeacherCoursesPage()
     const admin = createAdminClient();
     const { data: decks } = await admin
         .from('decks')
-        .select('id, name, created_at, course_id')
+        .select('id, name, created_at, course_id, share_code')
         .eq('created_by', user.id)
         .order('created_at', { ascending: false } );
 
@@ -70,6 +70,29 @@ export default async function TeacherCoursesPage()
                                 <p style={{ color: 'rgba(247,243,255,0.75)' }}>
                                     {questionCounts.get(deck.id) ?? 0} questions
                                 </p>
+
+                                {deck.share_code && (
+                                    <p style={{ marginTop: '0.5rem' }}>
+                                        <span style={{ color: 'rgba(247,243,255,0.6)', fontSize: '0.8rem' }}>
+                                            Student code:{' '}
+                                        </span>
+                                        <span style={{
+                                            fontFamily: 'monospace',
+                                            fontSize: '1rem',
+                                            fontWeight: 700,
+                                            letterSpacing: '0.15em',
+                                            background: 'rgba(247,243,255,0.12)',
+                                            border: '1px solid rgba(247,243,255,0.2)',
+                                            borderRadius: '6px',
+                                            padding: '2px 10px',
+                                            color: 'rgba(247,243,255,0.95)',
+                                        }}>
+                                            {deck.share_code}
+                                        </span>
+                                    </p>
+                                )}
+
+
                                 <Link className={styles.ghostBtn} href={`/teacher_courses/${deck.course_id}/deck/${deck.id}`}>
                                     Open Deck →
                                 </Link>

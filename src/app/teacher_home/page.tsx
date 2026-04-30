@@ -53,15 +53,6 @@ export default function PostLoginHome() {
             <a className={styles.ghostBtn} href="/teacher_courses">
               Manage Decks
             </a>
-            <button className={styles.ghostBtn} type="button">
-              View game results
-            </button>
-            <button className={styles.ghostBtn} type="button">
-              Generate student summary
-            </button>
-            <button className={styles.ghostBtn} type="button">
-              Share a question set
-            </button>
           </div>
           <div className={styles.panel}>
             <h3>Previous Game Summary</h3>

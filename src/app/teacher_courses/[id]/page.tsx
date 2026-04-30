@@ -34,7 +34,7 @@ export default async function CourseDetailPage({ params }: Props) {
         .eq('course_id', id);
 
 // Step 2: look up display names for those student IDs
-    const studentIds = enrollments?.map(e => e.student_id) ?? [];
+    const studentIds = enrollments?.map(e => e.student_id).filter((id): id is string => id !== null) ?? [];
 
     const { data: studentProfiles } = studentIds.length > 0
         ? await admin
@@ -70,7 +70,7 @@ export default async function CourseDetailPage({ params }: Props) {
                 <section className={styles.hero}>
                     <div>
                         <h1>{course.name}</h1>
-                        <p>Created {new Date(course.created_at).toLocaleDateString()}</p>
+                        <p>Created {new Date(course.created_at ?? '').toLocaleDateString()}</p>
                     </div>
                 </section>
 
@@ -103,7 +103,7 @@ export default async function CourseDetailPage({ params }: Props) {
                             <div key={deck.id} className={styles.panel}>
                                 <h3>{deck.name}</h3>
                                 <p style={{ color: 'rgba(247,243,255,0.6)', fontSize: '0.85rem' }}>
-                                    Created {new Date(deck.created_at).toLocaleDateString()}
+                                    Created {new Date(deck.created_at ?? '').toLocaleDateString()}
                                 </p>
                                 <a className={styles.ghostBtn} href={`/teacher_courses/${id}/deck/${deck.id}`}>
                                     View Deck →

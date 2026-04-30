@@ -79,6 +79,42 @@ export type Database = {
           },
         ]
       }
+      student_saved_decks: {
+        Row: {
+          id: string
+          student_id: string
+          deck_id: string
+          saved_at: string | null
+        }
+        Insert: {
+          id?: string
+          student_id: string
+          deck_id: string
+          saved_at?: string | null
+        }
+        Update: {
+          id?: string
+          student_id?: string
+          deck_id?: string
+          saved_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_saved_decks_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "student_profiles"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "student_saved_decks_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       courses: {
         Row: {
           created_at: string | null
@@ -180,6 +216,7 @@ export type Database = {
           created_by: string
           id: string
           name: string
+          share_code: string | null
         }
         Insert: {
           course_id: string
@@ -187,6 +224,7 @@ export type Database = {
           created_by: string
           id?: string
           name: string
+          share_code?: string | null
         }
         Update: {
           course_id?: string
@@ -194,6 +232,7 @@ export type Database = {
           created_by?: string
           id?: string
           name?: string
+          share_code?: string | null
         }
         Relationships: [
           {

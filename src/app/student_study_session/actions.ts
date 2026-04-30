@@ -25,41 +25,34 @@ export async function fetchDecksForStudySession(): Promise<StudyDeck[]> {
 
     const admin = createAdminClient();
 
-    const { data: enrollments } = await admin
-        .from('course_enrollments')
-        .select('course_id')
+    const { data: savedDecks } = await admin
+        .from('student_saved_decks')
+        .select(`
+            deck_id,
+            decks (
+                id,
+                name,
+                course_id,
+                courses (
+                    name
+                )
+            )
+        `)
         .eq('student_id', user.id);
 
-    const courseIds = enrollments?.map((enrollment) => enrollment.course_id) ?? [];
+   if (!savedDecks || savedDecks.length === 0) return [];
 
-    const { data: decks } = courseIds.length > 0
-        ? await admin
-            .from('decks')
-            .select('id, name, course_id')
-            .in('course_id', courseIds)
-            .order('name')
-        : await admin
-            .from('decks')
-            .select('id, name, course_id')
-            .order('name');
-
-    const courseNameById = new Map<string, string>();
-    if (courseIds.length > 0) {
-        const { data: courses } = await admin
-            .from('courses')
-            .select('id, name')
-            .in('id', courseIds);
-
-        for (const course of courses ?? []) {
-            courseNameById.set(course.id, course.name);
-        }
-    }
-
-    return (decks ?? []).map((deck) => ({
-        id: deck.id,
-        name: deck.name,
-        courseName: deck.course_id ? courseNameById.get(deck.course_id) : undefined,
-    }));
+    return savedDecks
+        .map((row) => {
+            const deck = row.decks as any;
+            if (!deck) return null;
+            return {
+                id: deck.id,
+                name: deck.name,
+                courseName: deck.courses?.name ?? undefined,
+            };
+        })
+        .filter(Boolean) as StudyDeck[];
 }
 
 export async function fetchQuestionsForStudySession(deckId?: string): Promise<StudyQuestion[]> {

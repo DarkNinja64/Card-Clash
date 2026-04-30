@@ -56,15 +56,12 @@ export default function PostLoginHome() {
             <a className={styles.secondaryBtn} href = "/student_course_enrollments">
               Manage Courses
             </a>
-            <button className={styles.ghostBtn} type="button">
-              Review game scores
-            </button>
-            <button className={styles.ghostBtn} type="button">
-              Generate study suggestions
-            </button>
-            <button className={styles.ghostBtn} type="button">
+            <a className={styles.secondaryBtn} href = "/student_view_saved">
               View saved sets
-            </button>
+            </a>
+            <a className={styles.secondaryBtn} href = "/student_save_set">
+              Save a new set
+            </a>
           </div>
           <div className={styles.panel}>
             <h3>Upcoming Sessions</h3>
