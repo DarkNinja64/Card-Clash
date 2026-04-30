@@ -40,6 +40,11 @@ type PreloadedFeedback = {
   incorrect: string;
 };
 
+const PARTY_FEEDBACK_FALLBACK: PreloadedFeedback = {
+  correct: 'Nice work. You matched the right idea, so keep noticing the clue that pointed you there.',
+  incorrect: 'Not quite. Take another look at the key concept behind this question and compare it to the correct answer.',
+};
+
 export default function PartyPage() {
   const router = useRouter();
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -48,6 +53,7 @@ export default function PartyPage() {
   const [hasAnsweredLocally, setHasAnsweredLocally] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [preloadedFeedback, setPreloadedFeedback] = useState<PreloadedFeedback | null>(null);
+  const [preloadedQuestionId, setPreloadedQuestionId] = useState<string | null>(null);
   const [aiFeedback, setAiFeedback] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -101,6 +107,9 @@ export default function PartyPage() {
       }
       if (data.phase === 'answer') {
         setHasAnsweredLocally(false);
+      }
+      if (data.phase === 'analyze') {
+        setSelectedOption(null);
       }
     };
 
@@ -174,12 +183,14 @@ export default function PartyPage() {
 
   useEffect(() => {
     if (!me?.question || !lobby || lobby.phase === 'game_over') return;
+    if (preloadedQuestionId === me.question.id) return;
 
     let cancelled = false;
     setAiLoading(true);
     setAiError(null);
     setAiFeedback(null);
     setPreloadedFeedback(null);
+    setPreloadedQuestionId(me.question.id);
     setSelectedOption(me.selectedAnswer ?? null);
 
     fetch('/api/study-feedback', {
@@ -194,11 +205,12 @@ export default function PartyPage() {
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
-        setPreloadedFeedback(data?.preloaded || null);
+        setPreloadedFeedback(data?.preloaded || PARTY_FEEDBACK_FALLBACK);
       })
       .catch(() => {
         if (cancelled) return;
-        setAiError('AI feedback unavailable.');
+        setPreloadedFeedback(PARTY_FEEDBACK_FALLBACK);
+        setAiError(null);
       })
       .finally(() => {
         if (cancelled) return;
@@ -208,7 +220,7 @@ export default function PartyPage() {
     return () => {
       cancelled = true;
     };
-  }, [lobby?.round, me?.question?.id, me?.question?.question, me?.question?.answer, me?.selectedAnswer]);
+  }, [lobby?.phase, lobby?.round, me?.question, preloadedQuestionId]);
 
   useEffect(() => {
     return () => {
