@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import  UserName  from "@/components/UserName";
 import styles from '../teacher_home/teacher_home.module.css';
 import CreateDeckForm from './CreateDeckForm';
+import DeleteDeckButton from './DeleteDeckButton';
 import Link from "next/link";
 
 export default async function TeacherCoursesPage()
@@ -93,9 +94,12 @@ export default async function TeacherCoursesPage()
                                 )}
 
 
-                                <Link className={styles.ghostBtn} href={`/teacher_courses/${deck.course_id}/deck/${deck.id}`}>
-                                    Open Deck →
-                                </Link>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                                    <Link className={styles.ghostBtn} href={`/teacher_courses/${deck.course_id}/deck/${deck.id}`}>
+                                        Open Deck →
+                                    </Link>
+                                    <DeleteDeckButton deckId={deck.id} />
+                                </div>
                             </div>
                         ))
                     ) : (
