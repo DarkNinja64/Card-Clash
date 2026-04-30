@@ -141,8 +141,33 @@ def _reset_round(lobby: dict) -> None:
         p['roundScore'] = 0
 
 
+def _pick_unique_question(pool: list, exclude_ids: set, seen_ids: set) -> dict | None:
+    """Return a question from pool, avoiding held questions and preferring unseen ones."""
+    if not pool:
+        return None
+    # ideal: not held by anyone else AND unseen by this player
+    best = [q for q in pool if q['id'] not in exclude_ids and q['id'] not in seen_ids]
+    if best:
+        return random.choice(best)
+    # ok: not held by anyone else (player may have seen it before)
+    ok = [q for q in pool if q['id'] not in exclude_ids]
+    if ok:
+        return random.choice(ok)
+    # fallback: not seen (even if currently held by another player)
+    unseen = [q for q in pool if q['id'] not in seen_ids]
+    if unseen:
+        return random.choice(unseen)
+    return random.choice(pool)
+
+
+def _held_by_others(players: list, exclude_id: str) -> set:
+    return {p['question']['id'] for p in players if p.get('question') and p['id'] != exclude_id}
+
+
 def _resolve_swap_lock(lobby: dict) -> None:
     players = list(lobby['players'].values())
+    pool = lobby.get('questionPool') or []
+
     locked = {p['id'] for p in players if p['wantsLock'] and not p['lockUsed']}
     for p in players:
         if p['wantsLock'] and not p['lockUsed']:
@@ -150,26 +175,55 @@ def _resolve_swap_lock(lobby: dict) -> None:
 
     swappers = _shuffle([p for p in players if p['wantsSwap'] and not p['swapUsed'] and p['id'] not in locked])
     eligible = [p for p in players if p['id'] not in locked]
-    used: set = set()
+    used_as_target: set = set()
 
     for swapper in swappers:
-        candidates = [p for p in eligible if p['id'] != swapper['id'] and p['id'] not in used]
+        candidates = [p for p in eligible if p['id'] != swapper['id'] and p['id'] not in used_as_target]
+
         if not candidates:
-            # No eligible partner (everyone locked) — pull a random question from the selected deck instead
-            pool = lobby.get('questionPool') or []
-            current_id = str(swapper['question']['id']) if swapper.get('question') else None
-            alternates = [q for q in pool if str(q['id']) != current_id]
-            if alternates:
-                swapper['question'] = random.choice(alternates)
-                swapper['swapUsed'] = True
-                swapper['swappedThisRound'] = True
+            # No eligible target (everyone locked/already used) — give swapper a fresh question.
+            # Exclude every question currently held by another player so there are no duplicates.
+            new_q = _pick_unique_question(
+                pool,
+                exclude_ids=_held_by_others(players, swapper['id']),
+                seen_ids=swapper.get('seenQuestionIds', set()),
+            )
+            if new_q:
+                swapper['question'] = new_q
+                swapper['seenQuestionIds'].add(new_q['id'])
+            swapper['swapUsed'] = True
+            swapper['swappedThisRound'] = True
             continue
+
         target = random.choice(candidates)
-        used.add(target['id'])
-        swapper['question'], target['question'] = target['question'], swapper['question']
+        used_as_target.add(target['id'])
+
+        # Swapper steals target's question.
+        swapper['question'] = target['question']
+        swapper['seenQuestionIds'].add(swapper['question']['id'])
         swapper['swapUsed'] = True
         swapper['swappedThisRound'] = True
         target['swappedThisRound'] = True
+
+        # Target gets a fresh unique question — not the stolen one (now held by swapper),
+        # not any other currently-held question, and preferably one they haven't seen.
+        # _held_by_others is computed after swapper['question'] was updated, so the stolen
+        # question is already reflected in swapper's slot.
+        new_q_for_target = _pick_unique_question(
+            pool,
+            exclude_ids=_held_by_others(players, target['id']),
+            seen_ids=target.get('seenQuestionIds', set()),
+        )
+        if new_q_for_target:
+            target['question'] = new_q_for_target
+            target['seenQuestionIds'].add(new_q_for_target['id'])
+        else:
+            # Extreme edge case: every pool question is held by someone else.
+            # Give target any question that isn't the one swapper just took.
+            fallback = [q for q in pool if q['id'] != swapper['question']['id']] or pool
+            chosen = random.choice(fallback)
+            target['question'] = chosen
+            target['seenQuestionIds'].add(chosen['id'])
 
 
 async def _fetch_questions(deck_id: str | None = None) -> list | None:
@@ -232,6 +286,10 @@ class PartyNamespace(socketio.AsyncNamespace):
                 _lobbies.pop(lobby['code'], None)
                 return
             if sid not in lobby['players']:
+                continue
+            # During an active game, keep the player slot so they can reconnect
+            # after navigating from student_lobby → party (which creates a new socket).
+            if lobby['status'] == 'in_game':
                 continue
             lobby['players'].pop(sid)
             if not lobby['players']:
