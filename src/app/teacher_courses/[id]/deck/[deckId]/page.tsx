@@ -88,7 +88,7 @@ export default async function DeckDetailPage({ params }: Props) {
                         <p className={styles.brandTag}>{deck.name} - {course?.name}</p>
                     </div>
                 </div>
-                <Link className={styles.secondaryBtn} href={`/teacher_courses/${id}`}>← Back</Link>
+                <Link className={styles.secondaryBtn} href="/teacher_courses">← Back</Link>
             </header>
 
             <main className={styles.main}>
