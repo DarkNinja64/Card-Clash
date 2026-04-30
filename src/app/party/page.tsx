@@ -40,10 +40,14 @@ type PreloadedFeedback = {
   incorrect: string;
 };
 
-const PARTY_FEEDBACK_FALLBACK: PreloadedFeedback = {
-  correct: 'Nice work. You matched the right idea, so keep noticing the clue that pointed you there.',
-  incorrect: 'Not quite. Take another look at the key concept behind this question and compare it to the correct answer.',
-};
+function buildPartyFallback(question: string, correctAnswer: string): PreloadedFeedback {
+  const shortQuestion = question.replace(/\s+/g, ' ').trim();
+
+  return {
+    correct: `On the question "${shortQuestion}", you chose ${correctAnswer}, and that answer fits what the question was asking. The important thing to remember is why ${correctAnswer} matches the idea being tested here. When you review this later, try to point to the exact clue in the question that led you to that answer.`,
+    incorrect: `On the question "${shortQuestion}", the correct answer was ${correctAnswer}. What matters here is understanding why ${correctAnswer} fits the question better than the other choices. When you look back at it, focus on what concept the question is testing and which words in the prompt point you toward ${correctAnswer}.`,
+  };
+}
 
 export default function PartyPage() {
   const router = useRouter();
@@ -205,11 +209,11 @@ export default function PartyPage() {
       .then((res) => res.json())
       .then((data) => {
         if (cancelled) return;
-        setPreloadedFeedback(data?.preloaded || PARTY_FEEDBACK_FALLBACK);
+        setPreloadedFeedback(data?.preloaded || buildPartyFallback(me.question.question, me.question.answer ?? 'the correct answer'));
       })
       .catch(() => {
         if (cancelled) return;
-        setPreloadedFeedback(PARTY_FEEDBACK_FALLBACK);
+        setPreloadedFeedback(buildPartyFallback(me.question.question, me.question.answer ?? 'the correct answer'));
         setAiError(null);
       })
       .finally(() => {
